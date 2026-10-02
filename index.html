@@ -1,13 +1,331 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TemanDekat</title>
-<script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-<div id="root"></div>
-<script type="module" src="/src/main.jsx"></script>
-</body>
-</html>
+import React, { useState, useEffect, useRef, useMemo } from 'react'; // Types type Interest = 'Horor' | 'Nugas' | 'Ngopi' | 'Game' | 'Cuan'; type User = { id: string; name: string; avatar: string; distance: number; area: string; interest: Interest; lastMsg: string; time: string; unread?: number; online: boolean; mute?: boolean; bio: string; color: string; }; type Message = { id: string; from: 'me' | 'them'; text: string; time: string; status?: 'sent' | 'delivered' | 'read'; type?: 'text' | 'location' | 'image'; }; type UnlockLog = { id: string; name: string; time: string; date: string; distance: number; link: string; income: number; area: string; }; // Mock Data const USERS: User[] = [ { id:'1', name:'Sinta', avatar:'S', distance:0.4, area:'Kartasura', interest:'Horor', lastMsg:'Eh radar mu nangkep aku?', time:'20:18', unread:2, online:true, bio:'suka horor • warung kopi', color:'#A855F7' }, { id:'2', name:'Budi Kos', avatar:'B', distance:0.7, area:'Solo Baru', interest:'Ngopi', lastMsg:'Gas nongkrong?', time:'19:45', online:true, mute:true, bio:'anak kos • ngopi santai', color:'#22C55E' }, { id:'3', name:'Mita Grogol', avatar:'M', distance:1.1, area:'Grogol', interest:'Horor', lastMsg:'Suka cerita horor juga?', time:'18:30', unread:1, online:false, bio:'penikmat horor • Sukoharjo', color:'#A855F7' }, { id:'4', name:'Riko', avatar:'R', distance:0.9, area:'Bekonang', interest:'Game', lastMsg:'Mabar ML kuy', time:'17:12', online:true, bio:'mabar everyday', color:'#F97316' }, { id:'5', name:'Dinda', avatar:'D', distance:1.4, area:'Kartasura', interest:'Nugas', lastMsg:'Besok ngampus bareng?', time:'16:05', online:false, bio:'mahasiswa UNS • nugas', color:'#3B82F6' }, { id:'6', name:'Farhan', avatar:'F', distance:0.3, area:'Sukoharjo Kota', interest:'Cuan', lastMsg:'Ada info cuan?', time:'15:20', online:true, bio:'cuan hunter', color:'#EAB308' }, { id:'7', name:'Lia', avatar:'L', distance:1.8, area:'Nguter', interest:'Ngopi', lastMsg:'Kopinya enak loh di sini', time:'Kemarin', online:false, bio:'barista freelance', color:'#22C55E' }, { id:'8', name:'Agus Warung', avatar:'A', distance:0.5, area:'Tawangsari', interest:'Cuan', lastMsg:'Stok kopi baru datang', time:'Kemarin', online:true, bio:'warung kopi • open 24h', color:'#EAB308' }, ]; const INITIAL_CHATS: Record = { '1': [ { id:'m1', from:'them', text:'Halo, kamu deket sini ya?', time:'20:15' }, { id:'m2', from:'me', text:'Iya radar ku nangkep 0.4km dari Kartasura 😅', time:'20:16', status:'read' }, { id:'m3', from:'them', text:'Eh radar mu nangkep aku?', time:'20:18' }, ], '2': [ { id:'m1', from:'them', text:'Gas nongkrong?', time:'19:44' }, { id:'m2', from:'me', text:'Gas, dimana?', time:'19:45', status:'read' }, ], '3': [ { id:'m1', from:'them', text:'Suka cerita horor juga?', time:'18:30' }, ], '4': [{ id:'m1', from:'them', text:'Mabar ML kuy', time:'17:12' }], '5': [{ id:'m1', from:'them', text:'Besok ngampus bareng?', time:'16:05' }], '6': [{ id:'m1', from:'them', text:'Ada info cuan?', time:'15:20' }], '7': [{ id:'m1', from:'them', text:'Kopinya enak loh di sini', time:'Kemarin' }], '8': [{ id:'m1', from:'them', text:'Stok kopi baru datang', time:'Kemarin' }], }; const INTEREST_COLOR: Record = { Horor:'#A855F7', Nugas:'#3B82F6', Ngopi:'#22C55E', Game:'#F97316', Cuan:'#EAB308', }; const INITIAL_UNLOCKS: UnlockLog[] = [ { id:'u1', name:'Sinta', time:'20:18', date:'Hari ini', distance:0.4, link:'sfl.gl/KPtdkkyE', income:500, area:'Kartasura' }, { id:'u2', name:'Budi Kos', time:'19:42', date:'Hari ini', distance:0.7, link:'sfl.gl/KPtdkkyE', income:500, area:'Solo Baru' }, { id:'u3', name:'Mita Grogol', time:'18:10', date:'Hari ini', distance:1.1, link:'sfl.gl/jI35x0ci', income:500, area:'Grogol' }, { id:'u4', name:'Riko', time:'17:05', date:'Hari ini', distance:0.9, link:'sfl.gl/KPtdkkyE', income:500, area:'Bekonang' }, { id:'u5', name:'Dinda', time:'16:22', date:'Kemarin', distance:2.3, link:'sfl.gl/KPtdkkyE', income:500, area:'Kartasura' }, { id:'u6', name:'Farhan', time:'15:11', date:'Kemarin', distance:0.3, link:'sfl.gl/jI35x0ci', income:500, area:'Sukoharjo Kota' }, { id:'u7', name:'Lia', time:'14:55', date:'Kemarin', distance:1.8, link:'sfl.gl/KPtdkkyE', income:500, area:'Nguter' }, ]; // Icons as inline SVG const Icons = { search: (props:any) => , camera: (props:any) => , dots: (props:any) => , chat: (props:any) => , radar: (props:any) => , phone: (props:any) => , back: (props:any) => , video: (props:any) => , emoji: (props:any) => , attach: (props:any) => , mic: (props:any) => , send: (props:any) => , archive: (props:any) => , mute: (props:any) => , check: (props:any) => , doubleCheck: (props:any) => , crown: (props:any) => , money: (props:any) => , x: (props:any) => , }; export default function App(){ const [activeTab, setActiveTab] = useState<'CHAT'|'RADAR'|'PANGGILAN'>('CHAT'); const [searchOpen, setSearchOpen] = useState(false); const [searchQuery, setSearchQuery] = useState(''); const [selectedUser, setSelectedUser] = useState(null); const [chats, setChats] = useState>(INITIAL_CHATS); const [inputText, setInputText] = useState(''); const [showMenu, setShowMenu] = useState(false); const [distanceFilter, setDistanceFilter] = useState(2); const [interestFilter, setInterestFilter] = useState('Semua'); const [scanning, setScanning] = useState(false); const [tooltipUser, setTooltipUser] = useState(null); const [showTyping, setShowTyping] = useState(false); const [sheetHeight, setSheetHeight] = useState(0.48); // 0-1 const [isDragging, setIsDragging] = useState(false); const sheetRef = useRef(null); const messagesEndRef = useRef(null); const radarContainerRef = useRef(null); const [toast, setToast] = useState<{text:string, id:number}|null>(null); const toastTimer = useRef(null); const toastIdRef = useRef(0); const showToast = (msg:string)=>{ toastIdRef.current += 1; setToast({text: msg, id: toastIdRef.current}); if(toastTimer.current) window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(()=>setToast(null), 2200) as unknown as number; }; // --- OWNER MODE STATE --- const [showOwnerLogin, setShowOwnerLogin] = useState(false); const [ownerPin, setOwnerPin] = useState(''); const [isOwner, setIsOwner] = useState(false); const [showOwnerDash, setShowOwnerDash] = useState(false); const [avatarTapCount, setAvatarTapCount] = useState(0); const avatarTapTimer = useRef(null); const longPressTimer = useRef(null); const [longPressProgress, setLongPressProgress] = useState(0); const longPressInterval = useRef(null); const [ownerStats, setOwnerStats] = useState({ todayIncome: 12500, todayClicks: 25, monthIncome: 187000, linkClicks: { 'sfl.gl/KPtdkkyE': 312, 'sfl.gl/jI35x0ci': 89 }, seabankBalance: 45200, seabankNumber: '901122061680', weekly: [ { day:'Sen', income:8500 }, { day:'Sel', income:12200 }, { day:'Rab', income:9800 }, { day:'Kam', income:15200 }, { day:'Jum', income:18700 }, { day:'Sab', income:12500 }, { day:'Min', income:11200 }, ], }); const [unlockLogs, setUnlockLogs] = useState(INITIAL_UNLOCKS); const topUsers = useMemo(()=> USERS.map(u=> ({...u, chatCount: (chats[u.id]?.length||0)+Math.floor(Math.random()*6) })).sort((a,b)=>b.chatCount-a.chatCount).slice(0,5), [chats]); const handleOwnerUnlock = (link: string, dist: number, userName?: string)=>{ const newIncome = 500; setOwnerStats(prev=>{ const key = link.replace('https://','').replace('http://','') as keyof typeof prev.linkClicks; const current = (prev.linkClicks[key as any] || prev.linkClicks['sfl.gl/KPtdkkyE']); return { ...prev, todayIncome: prev.todayIncome + newIncome, todayClicks: prev.todayClicks + 1, monthIncome: prev.monthIncome + newIncome, linkClicks: { ...prev.linkClicks, [key]: current + 1 }, weekly: prev.weekly.map((w,i)=> i===prev.weekly.length-1 ? {...w, income: w.income+newIncome} : w), seabankBalance: prev.seabankBalance + newIncome, } }); const log: UnlockLog = { id: Date.now().toString(), name: userName || 'User Radar', time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), date: 'Hari ini', distance: dist, link: link.replace('https://',''), income: 500, area: 'Sukoharjo', }; setUnlockLogs(prev=> [log, ...prev].slice(0,50)); if(isOwner){ showToast(`+Rp 500 • ${link} • ${userName||''}`); } }; const openOwnerLogin = ()=>{ setShowOwnerLogin(true); setOwnerPin(''); }; const handleLongPressStart = ()=>{ setLongPressProgress(0); if(longPressTimer.current) window.clearTimeout(longPressTimer.current); if(longPressInterval.current) window.clearInterval(longPressInterval.current); let elapsed = 0; longPressInterval.current = window.setInterval(()=>{ elapsed+=100; setLongPressProgress(Math.min(100, (elapsed/3000)*100)); },100) as unknown as number; longPressTimer.current = window.setTimeout(()=>{ if(longPressInterval.current) window.clearInterval(longPressInterval.current); setLongPressProgress(0); openOwnerLogin(); showToast('Owner access detected • Masukkan PIN'); },3000) as unknown as number; }; const handleLongPressEnd = ()=>{ if(longPressTimer.current) window.clearTimeout(longPressTimer.current); if(longPressInterval.current) window.clearInterval(longPressInterval.current); setLongPressProgress(0); }; const handleAvatarTaps = ()=>{ // avatar 5x click logic const newCount = avatarTapCount+1; setAvatarTapCount(newCount); if(avatarTapTimer.current) window.clearTimeout(avatarTapTimer.current); if(newCount>=5){ setAvatarTapCount(0); openOwnerLogin(); showToast('5x tap • Owner login'); return; } showToast(`Tap ${newCount}/5 untuk Owner • tahan logo 3 detik`); avatarTapTimer.current = window.setTimeout(()=>setAvatarTapCount(0), 2500) as unknown as number; }; const submitOwnerPin = ()=>{ if(ownerPin==='1122'){ setIsOwner(true); setShowOwnerLogin(false); setShowOwnerDash(true); showToast('✅ Owner verified • Tri Angga'); } else { showToast('❌ PIN salah • hint: SeaBank 4 digit akhir'); setOwnerPin(''); } }; const filteredUsers = useMemo(()=>{ return USERS.filter(u=>{ const matchSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.area.toLowerCase().includes(searchQuery.toLowerCase()); const matchDist = u.distance <= distanceFilter; const matchInterest = interestFilter==='Semua' || u.interest===interestFilter; return matchSearch && matchDist && matchInterest; }); }, [searchQuery, distanceFilter, interestFilter]); const chatList = useMemo(()=>{ return USERS.filter(u=> u.name.toLowerCase().includes(searchQuery.toLowerCase())); }, [searchQuery]); useEffect(()=>{ messagesEndRef.current?.scrollIntoView({behavior:'smooth'}); }, [chats, selectedUser, showTyping]); // Simulate typing when opening chat useEffect(()=>{ if(selectedUser){ setShowTyping(true); const t = setTimeout(()=>setShowTyping(false), 1800); return ()=>clearTimeout(t); } }, [selectedUser?.id]); // Radar scan animation trigger const handleScan = ()=>{ showToast('Memindai radar Sukoharjo...'); setScanning(true); setTooltipUser(null); setTimeout(()=>setScanning(false), 2200); }; useEffect(()=>{ if(activeTab==='RADAR'){ const id = setTimeout(()=> handleScan(), 300); return ()=>clearTimeout(id); } }, [activeTab]); const handleSend = ()=>{ if(!inputText.trim() || !selectedUser) return; const newMsg: Message = { id: Date.now().toString(), from:'me', text:inputText, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), status:'sent' }; setChats(prev=> ({...prev, [selectedUser.id]: [...(prev[selectedUser.id]||[]), newMsg]})); setInputText(''); // simulate reply setShowTyping(true); setTimeout(()=>{ setShowTyping(false); const reply: Message = { id:(Date.now()+1).toString(), from:'them', text:'Oke siap! radar mu akurat banget 😍', time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }; setChats(prev=> ({...prev, [selectedUser.id]: [...(prev[selectedUser.id]||[]), reply]})); }, 1500); }; const handleSapa = (user:User)=>{ setActiveTab('CHAT'); setSelectedUser(user); // auto add message if not exist if(!chats[user.id] || chats[user.id].length===0){ setChats(prev=> ({...prev, [user.id]: [{ id:'auto', from:'me', text:`Hai ${user.name}! Radar nangkep kamu ${user.distance}km dari ${user.area} 👋`, time:'now', status:'sent' }]})); } }; // Sheet drag const handlePointerDown = (e: React.PointerEvent)=>{ setIsDragging(true); const startY = e.clientY; const startH = sheetHeight; const onMove = (ev: PointerEvent)=>{ const delta = (startY - ev.clientY) / (window.innerHeight); const newH = Math.min(0.85, Math.max(0.22, startH + delta)); setSheetHeight(newH); }; const onUp = ()=>{ setIsDragging(false); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); }; window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp); }; // Radar dot positions - precomputed polar const radarDots = useMemo(()=>{ const positions = [ { angle: 30, r: 0.25 }, { angle: 110, r: 0.42 }, { angle: 200, r: 0.31 }, { angle: 280, r: 0.55 }, { angle: 45, r: 0.68 }, { angle: 135, r: 0.78 }, { angle: 210, r: 0.88 }, { angle: 340, r: 0.6 }, ]; return USERS.map((u, i)=> { const p = positions[i]; const rad = p.angle * Math.PI/180; const x = 50 + Math.cos(rad) * p.r * 42; const y = 50 + Math.sin(rad) * p.r * 42; return { user:u, x, y, r:p.r }; }); }, []); const visibleDots = radarDots.filter(d=> d.r*5 <= distanceFilter && (interestFilter==='Semua' || d.user.interest===interestFilter)); const handleTabClick = (id: 'CHAT'|'RADAR'|'PANGGILAN')=>{ if(activeTab===id){ showToast(id==='CHAT' ? 'Chat sudah terbaru ✓' : id==='RADAR' ? 'Radar aktif • scanning...' : 'Panggilan terbaru'); if(id==='RADAR') handleScan(); return; } setActiveTab(id); }; return (
+{/* Phone Frame */}
+{/* Top notch for mobile feel */}
+{/* Header */}
+{!searchOpen ? (
+Teman Dekat {longPressProgress>0 && (
+)}
+{isOwner && OWNER}
+setSearchOpen(true)} className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition"> showToast('Kamera Radar 📸 - ambil foto sekitar')} className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition">
+setShowMenu(v=>!v)} className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition"> {showMenu && (
+{setInterestFilter('Horor'); setActiveTab('RADAR'); setShowMenu(false);}} className="w-full text-left px-4 py-3 hover:bg-[#182025] flex justify-between">Mode Hantu 👻• horor {setInterestFilter('Nugas'); setActiveTab('RADAR'); setShowMenu(false);}} className="w-full text-left px-4 py-3 hover:bg-[#182025] flex justify-between">Mode Nugas 📚• nugas { handleOwnerUnlock('https://sfl.gl/KPtdkkyE', 5, 'Menu'); window.open('https://sfl.gl/KPtdkkyE','_blank'); setShowMenu(false);}} className="w-full text-left px-4 py-3 hover:bg-[#182025] flex justify-between bg-[#00A884]/10">Mode Cuan Bareng 💸UNLOCK 5KM
+{showToast('Grup Nongkrong Sukoharjo - 24 member online'); setShowMenu(false);}} className="w-full text-left px-4 py-3 hover:bg-[#182025]">Grup Nongkrong Sukoharjo {showToast('Setelan Radar • Jarak & minat disimpan'); setShowMenu(false);}} className="w-full text-left px-4 py-3 hover:bg-[#182025]">Setelan Radar {isOwner && {setShowOwnerDash(true); setShowMenu(false);}} className="w-full text-left px-4 py-3 hover:bg-[#182025] text-[#00D084] font-bold flex items-center gap-2"> Owner Dashboard}
+)}
+) : (
+{setSearchOpen(false); setSearchQuery('');}} className="w-10 h-10 flex items-center justify-center">
+{searchQuery}
+setSearchQuery(e.target.value)} placeholder="Cari atau mulai chat baru" className="bg-transparent outline-none text-[14px] w-full placeholder-[#8696A0] text-white"/>
+)} {/* Tabs */}
+{[ {id:'CHAT', label:'CHAT', icon:Icons.chat, count:3}, {id:'RADAR', label:'RADAR', icon:Icons.radar}, {id:'PANGGILAN', label:'PANGGILAN', icon:Icons.phone}, ].map(tab=>{ const isActive = activeTab===tab.id; return ( handleTabClick(tab.id as any)} className={`flex-1 flex items-center justify-center gap-1.5 text-[13.5px] font-medium tracking-wide transition relative ${isActive?'text-[#00A884]':'text-[#8696A0]'}`}> {tab.label} {tab.count && isActive && activeTab==='CHAT' && {tab.count}} {isActive &&
+}
+ ) })}
+{/* Invisible owner hint */}
+TAHAN LOGO 3 DETIK UNTUK OWNER • 5x TAP AVATAR
+{/* Content */}
+{/* CHAT TAB */}
+{/* Search bar inside chat */}
+{searchQuery}
+setSearchQuery(e.target.value)} placeholder="Cari atau mulai chat baru" className="bg-transparent outline-none text-[14px] w-full placeholder-[#8696A0] text-[#D1D7DB]"/>
+{/* Archive */} showToast('Arsip: 1 chat disembunyikan')} className="flex items-center gap-6 px-4 h-[52px] hover:bg-[#202C33] transition text-left">
+Diarsipkan 1
+ {/* Premium Banner */} { handleOwnerUnlock('https://sfl.gl/KPtdkkyE',5,'Banner Chat'); window.open('https://sfl.gl/KPtdkkyE','_blank');}} className="mx-3 mt-2 bg-gradient-to-r from-[#00A884] to-[#02735E] rounded-[10px] p-3 flex items-center gap-3 text-left w-[calc(100%-24px)]">
+🚀
+Unlock Premium 5KM + Filter Cuan
+Temukan teman sultan sekitar Sukoharjo
+BUKA
+ {/* Chat List */}
+{chatList.map(u=>{ const msgs = chats[u.id]||[]; const last = msgs[msgs.length-1]; return ( setSelectedUser(u)} className="w-full flex gap-3 px-3 py-[9px] hover:bg-[#202C33] transition text-left group">
+{u.avatar}
+{u.online &&
+}
+{u.name} {u.distance}km • {u.area}
+{u.time}
+{last?.from==='me' && } {u.mute && } {last?.text || u.lastMsg}
+{u.unread ? {u.unread} : null}
+ ) })}
+🔒 Pesan terenkripsi end-to-end • Teman Dekat
+{/* RADAR TAB */}
+{/* Filter chips top */}
+{[0.5,1,2,5].map(d=>{ const isActive = distanceFilter===d; const isLocked = d===5; return ( { if(isLocked){ handleOwnerUnlock('https://sfl.gl/KPtdkkyE', d); showToast('Unlock Premium 5KM 💸 - buka sfl.gl/KPtdkkyE'); window.open('https://sfl.gl/KPtdkkyE','_blank'); } else { setDistanceFilter(d); showToast(`Radius ${d}km aktif`); }}} className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium border transition ${isActive?'bg-[#00A884] border-[#00A884] text-black':'bg-[#1a1a1a] border-[#333] text-white/80'} ${isLocked?'border-dashed border-[#00A884] !bg-[#00A884]/20 !text-[#00A884]' : ''}`}> {d}km {isLocked?'🔒':''} ) })}
+{(['Semua','Horor','Nugas','Ngopi','Game','Cuan'] as const).map(f=>{ const isActive = interestFilter===f; return ( { setInterestFilter(f); showToast(f==='Semua'? 'Semua minat' : `Filter ${f}`);}} className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium border transition flex items-center gap-1 ${isActive?'bg-white text-black border-white':'bg-[#1a1a1a]/80 border-[#333] text-white/70'}`}> {f!=='Semua' && } {f} ) })}
+{/* Radar Visual */}
+{/* Grid + circles */}
+{/* Concentric circles */} {[1,2,3,4].map(i=>(
+))} {/* Grid lines */}
+{/* Sweep line */}
+{/* Center */}
+KAMU
+Sukoharjo
+{avatarTapCount>0 &&
+{avatarTapCount}/5 TAP
+}
+{/* Dots */} {visibleDots.map(({user, x, y})=>(
+{ setTooltipUser(user); showToast(`${user.name} • ${user.distance}km`);}} className="relative w-[28px] h-[28px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-lg" style={{background:user.color, transform: scanning?'scale(0)':'scale(1)', transition:'transform 0.4s'}}> {user.avatar} {user.interest==='Horor'?'👻':user.interest==='Nugas'?'📚':user.interest==='Ngopi'?'☕':user.interest==='Game'?'🎮':'💸'}
+))} {/* scanning overlay */} {scanning && (
+)}
+{/* Tooltip */} {tooltipUser && (
+setTooltipUser(null)} className="absolute top-1 right-2 text-[#8696A0]">✕
+{tooltipUser.avatar}
+{tooltipUser.name}
+{tooltipUser.distance}km • {tooltipUser.area} • {tooltipUser.bio}
+{tooltipUser.interest}
+handleSapa(tooltipUser)} className="flex-1 bg-[#00A884] text-black text-[12px] font-bold py-2 rounded-full">SAPA showToast(`${tooltipUser.name} • ${tooltipUser.bio} • ${tooltipUser.distance}km`)} className="flex-1 bg-[#2A3942] text-white text-[12px] py-2 rounded-full">LIHAT PROFIL
+)} {/* Scan button */}
+SCAN ULANG RADAR
+{/* Bottom Sheet */}
+Terdeteksi {filteredUsers.length} teman di sekitar
+Radius {distanceFilter}km • Sukoharjo, Jawa Tengah
+📡
+{filteredUsers.map(u=>(
+{u.avatar}
+{u.name} {u.distance}km {u.interest}
+{u.area} • {u.bio}
+handleSapa(u)} className="bg-[#00A884] text-black text-[11px] font-bold px-3 py-1.5 rounded-full">SAPA showToast(`${u.name} - ${u.bio} | ${u.area}`)} className="bg-[#2A3942] text-white text-[11px] px-2.5 py-1.5 rounded-full">PROFIL
+))} { handleOwnerUnlock('https://sfl.gl/KPtdkkyE',5,'Radar Bottom'); window.open('https://sfl.gl/KPtdkkyE','_blank');}} className="mt-3 mx-2 w-[calc(100%-16px)] flex items-center justify-center gap-2 bg-gradient-to-r from-[#FFC107]/20 to-[#FF9800]/20 border border-[#FFC107]/30 text-[#FFC107] text-[12px] py-2.5 rounded-full">🔓 Buka radius 5KM + filter Cuan Bareng 💸
+{/* PANGGILAN TAB */}
+showToast('Buat tautan panggilan • link disalin')} className="m-3 bg-[#202C33] rounded-[12px] p-4 flex gap-3 items-center w-[calc(100%-24px)] text-left">
+Buat tautan panggilan
+Bagikan tautan untuk panggilan WhatsApp
+TERBARU
+{USERS.slice(0,6).map((u,i)=>(
+{u.avatar}
+{u.name}
+{i%2===0?'↙':'↗'} {i%2===0?'Tidak dijawab':'Masuk'} • {u.time} • radar {u.distance}km
+showToast(`Panggilan video ke ${u.name} • radar ${u.distance}km`)} className="w-8 h-8 rounded-full flex items-center justify-center text-[#00A884] hover:bg-white/10">
+))}
+{/* FAB */}
+{activeTab==='CHAT' && ( showToast('Mulai chat baru • pilih teman dari radar')} className="w-14 h-14 rounded-full bg-[#00A884] shadow-[0_4px_12px_rgba(0,0,0,0.4)] flex items-center justify-center text-white">  )} {activeTab==='RADAR' && (  )} {activeTab==='PANGGILAN' && ( showToast('Panggilan baru • pilih kontak')} className="w-14 h-14 rounded-full bg-[#00A884] flex items-center justify-center text-white"> )}
+{/* Chat Overlay */}
+{selectedUser && ( <> {/* Chat header */}
+setSelectedUser(null)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10">
+{selectedUser.avatar}
+{selectedUser.name}
+online • {selectedUser.distance}km • suka {selectedUser.interest.toLowerCase()}
+showToast(`Video call ${selectedUser.name}`)} className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center"> showToast(`Voice call ${selectedUser.name}`)} className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center"> showToast('Info kontak & radar')} className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center">
+{/* Chat bg */}
+{/* doodle bg */}
+{/* Date chip */}
+HARI INI • RADAR AKTIF • {selectedUser.area.toUpperCase()}
+{/* Encryption notice */}
+🔒 Pesan dan panggilan terenkripsi end-to-end. Ketuk untuk info. Radar: {selectedUser.distance}km terdeteksi
+{/* Messages */}
+{(chats[selectedUser.id]||[]).map(m=>(
+{m.type==='location' ? (
+📍 Berbagi Lokasi • {selectedUser.area}
+{m.text}
+) : ( {m.text} )} {m.time} {m.from==='me' && } {/* tail */}
+))} {showTyping && (
+)} {/* Location share card example for first user */} {selectedUser.id==='1' && (
+📍
+Berbagi Lokasi
+Kartasura • 0.4km
+Sinta berbagi lokasi live
+Aktif 1 jam • Ketuk untuk melihat
+)}
+{/* Input */}
+showToast('Emoji picker 😍🔥👻')} className="text-[#8696A0] p-1 hover:text-white"> 
+setInputText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); handleSend();}}} placeholder="Ketik pesan" rows={1} className="flex-1 bg-transparent outline-none text-[15px] text-white placeholder-[#8696A0] resize-none max-h-[100px] leading-5 py-1"/>
+                  <button onClick={()=>showToast('Lampiran • Dokumen, Galeri')} className="text-[#8696A0] p-1 hover:text-white"><Icons.attach className="w-5 h-5 rotate-45"/></button>
+                  <button onClick={()=>showToast('Kamera')} className="text-[#8696A0] p-1 hover:text-white"><Icons.camera className="w-5 h-5"/></button>
+                </div>
+                <button onClick={()=>{ if(inputText.trim()) handleSend(); else showToast('Tahan untuk rekam suara 🎤');}} className="w-11 h-11 rounded-full bg-[#00A884] flex items-center justify-center text-white shadow">
+                  {inputText.trim() ? <Icons.send className="w-5 h-5"/> : <Icons.mic className="w-5 h-5"/>}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* OWNER LOGIN MODAL */}
+        {showOwnerLogin && (
+          <div className="absolute inset-0 z-[70] bg-black/85 backdrop-blur-[6px] flex items-center justify-center p-6">
+            <div className="w-full max-w-[320px] bg-[#111B21] border border-[#00D084]/30 rounded-[20px] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-full bg-[#00D084] flex items-center justify-center"><Icons.crown className="w-5 h-5 text-black"/></div>
+                  <div>
+                    <div className="text-white font-bold text-[14px]">Owner Access</div>
+                    <div className="text-[#8696A0] text-[10px]">Tri Angga • SeaBank PIN</div>
+                  </div>
+                </div>
+                <button onClick={()=>setShowOwnerLogin(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white"><Icons.x className="w-4 h-4"/></button>
+              </div>
+              <div className="text-center mb-5">
+                <div className="text-white/90 text-[13px] mb-1">Masukkan PIN 4 digit</div>
+                <div className="text-[#00D084] text-[10px] tracking-wide">Hint: 4 digit akhir SeaBank kamu</div>
+              </div>
+              <div className="flex gap-2 justify-center mb-5">
+                {[0,1,2,3].map(i=>(
+                  <div key={i} className={`w-12 h-12 rounded-[12px] border-2 flex items-center justify-center text-[20px] font-bold transition-all ${ownerPin[i] ? 'border-[#00D084] bg-[#00D084]/10 text-white' : 'border-[#2A3942] bg-[#202C33] text-white/20'}`}>
+                    {ownerPin[i] ? '•' : ''}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[1,2,3,4,5,6,7,8,9].map(n=>(
+                  <button key={n} onClick={()=>{ if(ownerPin.length<4) setOwnerPin(p=>p+n.toString()); }} className="h-12 rounded-full bg-[#202C33] text-white font-medium hover:bg-[#2A3942] active:scale-95 transition">{n}</button>
+                ))}
+                <button onClick={()=>setOwnerPin(p=>p.slice(0,-1))} className="h-12 rounded-full bg-[#202C33] text-[#8696A0] hover:bg-[#2A3942]">⌫</button>
+                <button onClick={()=>{ if(ownerPin.length<4) setOwnerPin(p=>p+'0'); }} className="h-12 rounded-full bg-[#202C33] text-white font-medium hover:bg-[#2A3942]">0</button>
+                <button onClick={submitOwnerPin} className="h-12 rounded-full bg-[#00D084] text-black font-bold hover:bg-[#00C07A]">OK</button>
+              </div>
+              <div className="text-[10px] text-center text-white/20">Long-press logo 3s • Tap avatar 5x • PIN: 1122</div>
+            </div>
+          </div>
+        )}
+
+        {/* OWNER DASHBOARD */}
+        {showOwnerDash && (
+          <div className="absolute inset-0 z-[80] bg-[#060E11] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#0B2218] to-[#102A1F] border-b border-[#00D084]/20 p-4 pt-[calc(12px+var(--safe-area-inset-top))] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#00D084] flex items-center justify-center shadow-[0_0_20px_#00D08455]"><Icons.crown className="w-6 h-6 text-black"/></div>
+                <div>
+                  <div className="text-white font-bold text-[14px] tracking-wide">OWNER DASHBOARD - Tri Angga</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] bg-[#00D084] text-black px-2 py-0.5 rounded-full font-bold animate-pulse">Mode Pemilik Aktif</span>
+                    <span className="text-[10px] text-[#00D084]/70">SeaBank • {ownerStats.seabankNumber}</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={()=>setShowOwnerDash(false)} className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10"><Icons.x className="w-4 h-4"/></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3 pb-24">
+              {/* Top Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#111E22] border border-[#00D084]/20 rounded-[14px] p-3 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#00D084]/10 rounded-full blur-[20px] -translate-y-6 translate-x-6"/>
+                  <div className="text-[#8696A0] text-[10px] tracking-wide uppercase">Pemasukan Hari Ini</div>
+                  <div className="text-[#00D084] font-bold text-[18px] mt-1">Rp {ownerStats.todayIncome.toLocaleString('id-ID')}</div>
+                  <div className="text-white/60 text-[11px] mt-1">{ownerStats.todayClicks} klik • Rp 500/klik</div>
+                  <div className="mt-2 flex items-center gap-1 text-[10px] text-[#00D084]"><span className="w-1.5 h-1.5 bg-[#00D084] rounded-full animate-pulse"/> LIVE tracking</div>
+                </div>
+                <div className="bg-[#111E22] border border-white/10 rounded-[14px] p-3">
+                  <div className="text-[#8696A0] text-[10px] uppercase">Bulan Ini</div>
+                  <div className="text-white font-bold text-[18px] mt-1">Rp {ownerStats.monthIncome.toLocaleString('id-ID')}</div>
+                  <div className="text-white/50 text-[11px] mt-1">{Math.floor(ownerStats.monthIncome/500)} total klik</div>
+                  <div className="mt-2 text-[10px] text-[#8696A0]">Target: Rp 500k</div>
+                  <div className="h-1.5 bg-white/10 rounded-full mt-1 overflow-hidden"><div className="h-full bg-[#00D084] rounded-full" style={{width:`${Math.min(100, (ownerStats.monthIncome/500000)*100)}%`}}/></div>
+                </div>
+                <div className="bg-[#111E22] border border-white/10 rounded-[14px] p-3 col-span-2 flex justify-between items-center">
+                  <div>
+                    <div className="text-[#8696A0] text-[10px] uppercase">Total Klik Safelinku</div>
+                    <div className="flex gap-4 mt-1">
+                      <div><div className="text-white font-bold text-[13px]">sfl.gl/KPtdkkyE</div><div className="text-[#00D084] text-[14px] font-bold">{ownerStats.linkClicks['sfl.gl/KPtdkkyE']} klik</div></div>
+                      <div className="w-px bg-white/10"/>
+                      <div><div className="text-white font-bold text-[13px]">sfl.gl/jI35x0ci</div><div className="text-[#FFC107] text-[14px] font-bold">{ownerStats.linkClicks['sfl.gl/jI35x0ci']} klik</div></div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[#8696A0] text-[10px]">Saldo SeaBank</div>
+                    <div className="text-white font-bold text-[13px] mt-1">{ownerStats.seabankNumber.slice(0,4)}••••{ownerStats.seabankNumber.slice(-4)}</div>
+                    <div className="text-[#00D084] font-bold text-[16px]">Rp {ownerStats.seabankBalance.toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-white/40">mock • update real-time</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart */}
+              <div className="bg-[#111E22] border border-white/5 rounded-[14px] p-3">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-white font-medium text-[13px]">Pemasukan 7 Hari Terakhir</div>
+                  <div className="text-[10px] text-[#00D084] bg-[#00D084]/10 px-2 py-0.5 rounded-full border border-[#00D084]/20">Rp 500 / unlock</div>
+                </div>
+                <div className="flex items-end gap-2 h-[90px] px-1">
+                  {ownerStats.weekly.map((d,i)=>{
+                    const max = Math.max(...ownerStats.weekly.map(w=>w.income));
+                    const h = (d.income/max)*100;
+                    return (
+                      <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="text-[9px] text-[#00D084] font-bold">{(d.income/1000).toFixed(1)}k</div>
+                        <div className="w-full bg-[#1A2C28] rounded-t-[6px] relative overflow-hidden" style={{height:`${h}%`, minHeight:'12px'}}>
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#00D084] to-[#00D084]/60"/>
+                          <div className="absolute inset-0 opacity-30" style={{background:`linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`, animation:'shimmer 2s infinite'}}/>
+                        </div>
+                        <div className="text-[10px] text-[#8696A0]">{d.day}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-3 text-[10px] text-white/40 leading-snug bg-black/30 p-2 rounded-[8px] border border-white/5">💡 <b className="text-white/70">Cara kerja:</b> Setiap user klik tombol <span className="text-[#FFC107]">"Unlock 5KM"</span> atau banner premium, link lewat Safelinku (sfl.gl). Kamu dapat Rp 400-600 per klik valid. Dashboard ini hitung otomatis Rp 500/klik. Data real cek di Safelinku.</div>
+              </div>
+
+              {/* Unlock Table */}
+              <div className="bg-[#111E22] border border-white/5 rounded-[14px] overflow-hidden">
+                <div className="p-3 flex justify-between items-center border-b border-white/5">
+                  <div className="text-white font-medium text-[13px]">Daftar Unlock Radar Premium</div>
+                  <div className="text-[10px] bg-[#00D084]/15 text-[#00D084] px-2 py-1 rounded-full">{unlockLogs.length} data</div>
+                </div>
+                <div className="max-h-[220px] overflow-y-auto no-scrollbar">
+                  <table className="w-full text-[11px]">
+                    <thead className="sticky top-0 bg-[#111E22] text-[#8696A0] text-[9px] uppercase tracking-wide">
+                      <tr><th className="text-left p-2 font-medium">User</th><th className="text-left p-2 font-medium">Waktu</th><th className="text-left p-2 font-medium">Jarak</th><th className="text-left p-2 font-medium">Link</th><th className="text-right p-2 font-medium">Income</th></tr>
+                    </thead>
+                    <tbody>
+                      {unlockLogs.map(log=>(
+                        <tr key={log.id} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
+                          <td className="p-2"><div className="text-white font-medium">{log.name}</div><div className="text-[9px] text-[#8696A0]">{log.area}</div></td>
+                          <td className="p-2"><div className="text-white/80">{log.time}</div><div className="text-[9px] text-[#8696A0]">{log.date}</div></td>
+                          <td className="p-2 text-white/70">{log.distance}km</td>
+                          <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${log.link.includes('KPtdkkyE')?'bg-[#00D084]/20 text-[#00D084]':'bg-[#FFC107]/20 text-[#FFC107]'}`}>{log.link}</span></td>
+                          <td className="p-2 text-right text-[#00D084] font-bold">+{log.income}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Top Users */}
+              <div className="bg-[#111E22] border border-white/5 rounded-[14px] p-3">
+                <div className="text-white font-medium text-[13px] mb-3">Top Pengguna Aktif di Radar</div>
+                <div className="space-y-2">
+                  {topUsers.map((u, idx)=>(
+                    <div key={u.id} className="flex items-center gap-3 bg-black/20 p-2 rounded-[10px] border border-white/5">
+                      <div className="text-[11px] font-bold text-[#8696A0] w-4">#{idx+1}</div>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]" style={{background:u.color}}>{u.avatar}</div>
+                      <div className="flex-1"><div className="text-white text-[12px] font-medium">{u.name}</div><div className="text-[10px] text-[#8696A0]">{u.area} • {u.interest}</div></div>
+                      <div className="text-right"><div className="text-[#00D084] text-[12px] font-bold">{u.chatCount} chat</div><div className="text-[9px] text-[#8696A0]">{u.distance}km</div></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Explain */}
+              <div className="bg-gradient-to-br from-[#0E281E] to-[#111E22] border border-[#00D084]/20 rounded-[14px] p-3">
+                <div className="text-[#00D084] font-bold text-[12px] flex items-center gap-2"><Icons.money className="w-4 h-4"/> Bagaimana Pemasukan Masuk?</div>
+                <div className="text-[11px] text-white/70 leading-relaxed mt-2 space-y-1">
+                  <div>1. User di radar lihat <b className="text-white">tombol 5KM 🔒</b> atau banner <b className="text-white">Unlock Premium</b></div>
+                  <div>2. Saat klik, app panggil <code className="bg-black/40 px-1 rounded text-[#00D084]">handleOwnerUnlock()</code> → catat +Rp 500 dan buka link Safelinku <b className="text-[#FFC107]">sfl.gl/KPtdkkyE</b></div>
+                  <div>3. Safelinku hitung klik valid → masuk saldo Safelinku → bisa tarik ke SeaBank <b className="text-white">{ownerStats.seabankNumber}</b></div>
+                  <div>4. Dashboard ini adalah simulasi lokal. Untuk saldo real, klik <b className="text-[#00D084]">Cek Safelinku Langsung</b></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="p-3 bg-[#0A1512] border-t border-[#00D084]/20 grid grid-cols-2 gap-2">
+              <a href="https://safelinku.com" target="_blank" rel="noopener" className="bg-[#00D084] text-black text-[12px] font-bold py-3 rounded-full text-center hover:bg-[#00C07A] transition flex items-center justify-center gap-1"><span>🔗</span> Cek Safelinku Langsung</a>
+              <button onClick={()=>{ showToast(`Tarik Rp ${ownerStats.seabankBalance.toLocaleString('id-ID')} ke SeaBank ${ownerStats.seabankNumber} • Mock success`); setOwnerStats(s=>({...s, seabankBalance: s.seabankBalance+0})); }} className="bg-[#111E22] border border-[#00D084]/30 text-[#00D084] text-[12px] font-bold py-3 rounded-full hover:bg-[#00D084]/10 transition">💸 Tarik ke SeaBank</button>
+              <button onClick={()=>{ if(confirm('Reset data pemasukan?')){ setOwnerStats({ todayIncome:0, todayClicks:0, monthIncome:0, linkClicks:{'sfl.gl/KPtdkkyE':0,'sfl.gl/jI35x0ci':0}, seabankBalance:45200, seabankNumber:'901122061680', weekly: ownerStats.weekly.map(w=>({...w, income:0}))}); setUnlockLogs([]); showToast('Data direset'); } }} className="bg-[#1A1A1A] border border-white/10 text-white/70 text-[12px] py-2.5 rounded-full">♻️ Reset Data</button>
+              <button onClick={()=>{ setShowOwnerDash(false); setIsOwner(false); showToast('Kembali ke User Mode'); }} className="bg-[#202C33] text-white text-[12px] py-2.5 rounded-full border border-white/10">⬅️ Kembali ke User Mode</button>
+            </div>
+          </div>
+        )}
+
+        {/* Toast */}
+        {toast && (
+          <div key={toast.id} className="absolute bottom-[88px] left-1/2 -translate-x-1/2 z-[60] bg-[#233138] text-white text-[12px] px-4 py-2 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-white/10 max-w-[80%] text-center">
+            {toast.text}
+          </div>
+        )}
+
+        {/* Home indicator for mobile */}
+        <div className="hidden md:block h-3 bg-black/20"/>
+      </div>
+    </div>
+  );
+}
+
