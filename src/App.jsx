@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-const seaBankNo = "9013xxxxxxxx"; // GANTI NO SEABANK ASLI KAMU
+const seaBankNo = "901122061680"; // GANTI NO SEABANK ASLI KAMU
 const seaBankName = "TRI ANGGA";
 
 const users = [
