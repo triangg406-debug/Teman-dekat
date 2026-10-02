@@ -1,121 +1,161 @@
+import { useState, useEffect } from "react";
 
-import React, { useState } from 'react'
+const seaBankNo = "9013xxxxxxxx"; 
+const seaBankName = "TRI ANGGA";
 
-const profiles = [
-  { id: 1, name: "Sari", age: 21, dist: "200m", hobby: "Ngopi santai", initial: "S", wa: "6281234567001" },
-  { id: 2, name: "Bima", age: 23, dist: "450m", hobby: "Gym & futsal", initial: "B", wa: "6281234567002" },
-  { id: 3, name: "Riko", age: 22, dist: "1.2km", hobby: "Nongkrong motor", initial: "R", wa: "6281234567003" },
-  { id: 4, name: "Ayu", age: 20, dist: "800m", hobby: "Nonton drakor", initial: "A", wa: "6281234567004" },
-  { id: 5, name: "Dinda", age: 22, dist: "300m", hobby: "Karaoke & cafe", initial: "D", wa: "6281234567005" },
-  { id: 6, name: "Fajar", age: 24, dist: "600m", hobby: "Ngopi kerja remote", initial: "F", wa: "6281234567006" },
-  { id: 7, name: "Lina", age: 21, dist: "1km", hobby: "Skincare & makeup", initial: "L", wa: "6281234567007" },
-  { id: 8, name: "Yoga", age: 23, dist: "900m", hobby: "Travel Sukoharjo", initial: "Y", wa: "6281234567008" },
+const users = [
+  { id: 1, name: "Sari, 21", jarak: "200m", bio: "Ngopi santai", wa: "6281234567890" },
+  { id: 2, name: "Bima, 23", jarak: "450m", bio: "Gym & futsal", wa: "6281234567891" },
+  { id: 3, name: "Riko, 22", jarak: "1.2km", bio: "Ngoding", wa: "6281234567892" },
+  { id: 4, name: "Ayu, 20", jarak: "800m", bio: "Mahasiswa", wa: "6281234567893" },
 ];
 
-const packages = [
-  { amount: 10000, label: "10k", sapa: 10, bonus: 0 },
-  { amount: 25000, label: "25k", sapa: 25, bonus: 5 },
-  { amount: 50000, label: "50k", sapa: 50, bonus: 15 },
-  { amount: 100000, label: "100k", sapa: 100, bonus: 40 },
-];
-
-// GANTI INI JADI NOMOR DANA/WA KAMU ASLI
-const ownerWA = "628187974771";
-
-export default function App(){
-  const [saldo, setSaldo] = useState(()=>{
-    const s = localStorage.getItem('td_saldo'); return s ? parseInt(s) : 2500;
-  });
-  const [cuan, setCuan] = useState(()=>{
-    const c = localStorage.getItem('td_cuan'); return c ? parseInt(c) : 0;
-  });
+export default function App() {
+  const [saldo, setSaldo] = useState(() => Number(localStorage.getItem("td_saldo") || 5000));
+  const [cuan, setCuan] = useState(() => Number(localStorage.getItem("td_cuan") || 0));
+  const [seaBank, setSeaBank] = useState(() => Number(localStorage.getItem("td_seabank") || 5000000));
+  const [isAdminFree, setIsAdminFree] = useState(() => localStorage.getItem("td_admin_free") === "true");
   const [showTopup, setShowTopup] = useState(false);
-  const [selected, setSelected] = useState(packages[1]);
-  const [toast, setToast] = useState(null);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminInput, setAdminInput] = useState("5000000");
 
-  const save = (s,c) => {
-    localStorage.setItem('td_saldo', s); localStorage.setItem('td_cuan', c);
-  }
-  const pushToast = (m)=>{ setToast(m); setTimeout(()=>setToast(null),3000); }
+  useEffect(() => localStorage.setItem("td_saldo", saldo), [saldo]);
+  useEffect(() => localStorage.setItem("td_cuan", cuan), [cuan]);
+  useEffect(() => localStorage.setItem("td_seabank", seaBank), [seaBank]);
+  useEffect(() => localStorage.setItem("td_admin_free", isAdminFree), [isAdminFree]);
 
-  const handleSapa = (p) => {
-    if(saldo < 1000){ pushToast("Saldo habis, topup dulu!"); setShowTopup(true); return; }
-    const newSaldo = saldo - 1000;
-    const newCuan = cuan + 800;
-    setSaldo(newSaldo); setCuan(newCuan); save(newSaldo,newCuan);
-    const msg = encodeURIComponent(`Hai ${p.name} dari TemanDekat! Aku di Sukoharjo ${p.dist} dari kamu, boleh kenalan?`);
-    window.open(`https://wa.me/${p.wa}?text=${msg}`, "_blank");
-    pushToast(`Sapa ke ${p.name} terkirim! Cuan +Rp 800`);
+  const handleSapa = (u) => {
+    // KHUSUS OWNER = GRATIS, TETAP DAPAT CUAN
+    if (!isAdminFree && saldo < 1000) {
+      alert("Saldo habis, topup dulu!");
+      setShowTopup(true);
+      return;
+    }
+    
+    if (!isAdminFree) {
+      setSaldo(s => s - 1000);
+    }
+    // Owner tetap dapat cuan meski gratis
+    setCuan(c => c + 800);
+    setSeaBank(sb => sb + 800);
+    
+    window.open(`https://wa.me/${u.wa}?text=Halo ${u.name} dari TemanDekat!`, "_blank");
   };
 
-  const handleTopup = () => {
-    const total = selected.amount + selected.bonus * 1000;
-    const newSaldo = saldo + total;
-    setSaldo(newSaldo); save(newSaldo,cuan);
-    const waText = encodeURIComponent(`Halo Admin TemanDekat, konfirmasi Topup ${selected.label} = Rp ${selected.amount}`);
-    window.open(`https://wa.me/${ownerWA}?text=${waText}`, "_blank");
-    pushToast(`Topup ${selected.label} berhasil! Saldo +Rp ${total}`);
+  const handleTopup = (amount) => {
+    const bonus = amount >= 50000 ? 10000 : amount >= 25000 ? 5000 : 0;
+    setSaldo(s => s + amount + bonus);
+    setSeaBank(sb => sb + amount);
     setShowTopup(false);
+    alert(`Topup Rp ${amount.toLocaleString()} berhasil!`);
+  };
+
+  const resetSeaBank = (val) => {
+    const num = Number(val.toString().replace(/[^0-9]/g,"")) || 0;
+    setSeaBank(num);
+    setShowAdmin(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0a1e] text-white flex justify-center">
-      <div className="w-full max-w-[420px] bg-[#0f0a1e] min-h-screen relative">
-        <div className="p-4 flex justify-between items-center border-b border-white/10 sticky top-0 bg-[#0f0a1e]/90 backdrop-blur">
-          <h1 className="font-black text-lg">TemanDekat PRO</h1>
-          <div className="flex gap-2">
-            <div className="bg-white/10 px-3 py-1 rounded-full text-xs">Cuan: Rp {cuan}</div>
-            <div className="bg-purple-600 px-3 py-1 rounded-full text-sm font-bold">Rp {saldo}</div>
-          </div>
-        </div>
-
-        <div className="p-3">
-          <button onClick={()=>setShowTopup(true)} className="w-full bg-gradient-to-r from-purple-600 to-purple-700 py-3 rounded-xl font-bold shadow-lg">+ Topup Saldo (10k-100k)</button>
-        </div>
-
-        <div className="p-3 space-y-3">
-          {profiles.map(u=>(
-            <div key={u.id} className="bg-[#1e1635] p-4 rounded-2xl flex justify-between items-center">
-              <div className="flex gap-3 items-center">
-                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center font-bold text-lg">{u.initial}</div>
-                <div><div className="font-bold">{u.name}, {u.age} • {u.dist}</div><div className="text-xs text-zinc-400">{u.hobby}</div></div>
-              </div>
-              <button onClick={()=>handleSapa(u)} className="bg-purple-600 px-4 py-2 rounded-full text-sm font-bold active:scale-95">Sapa 1k</button>
-            </div>
-          ))}
-        </div>
-
-        <div className="p-4 text-center text-[11px] text-white/30">Mode Cuan: Tiap Sapa Rp 1.000 (Rp 800 masuk ke kamu) • Tarik minimal 20k ke DANA {ownerWA}</div>
-
-        {showTopup && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center">
-            <div className="bg-[#18122f] w-full max-w-[420px] rounded-t-[24px] p-5 border border-white/10">
-              <div className="font-extrabold text-lg">Pilih Paket Topup</div>
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                {packages.map(pkg=>{
-                  const sel = selected.amount===pkg.amount;
-                  return (
-                    <button key={pkg.amount} onClick={()=>setSelected(pkg)} className={`text-left rounded-xl border p-3 ${sel ? 'border-purple-500 bg-purple-500/20' : 'border-white/10 bg-[#1e1635]'}`}>
-                      <div className="font-bold">{pkg.label}</div>
-                      <div className="text-xs opacity-60">{pkg.sapa}+{pkg.bonus} Sapa</div>
-                      <div className="text-sm font-bold text-purple-300 mt-1">Rp {pkg.amount}</div>
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="mt-4 bg-black/40 p-3 rounded-xl text-xs">
-                Transfer ke DANA <b>{ownerWA}</b> / QRIS<br/>
-                Nominal: Rp {selected.amount} = {selected.sapa+selected.bonus} Sapa<br/>
-                Klik konfirmasi, saldo auto masuk (demo)
-              </div>
-              <button onClick={handleTopup} className="mt-4 w-full bg-purple-600 py-3 rounded-xl font-bold">Konfirmasi WA & Aktifkan {selected.sapa+selected.bonus} Sapa</button>
-              <button onClick={()=>setShowTopup(false)} className="mt-2 w-full py-2 text-sm opacity-50">Batal</button>
-            </div>
-          </div>
-        )}
-
-        {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#231a44] border border-purple-500/30 px-4 py-3 rounded-xl text-sm shadow-xl z-50">{toast}</div>}
+    <div className="min-h-screen bg-[#0f0a1e] text-white p-4 max-w-[430px] mx-auto">
+      <div className="flex justify-between items-center mb-3">
+        <h1 className="font-black text-xl">TemanDekat PRO {isAdminFree && <span className="text-[10px] bg-yellow-400 text-black px-2 py-0.5 rounded-full ml-2">OWNER FREE</span>}</h1>
+        <button onClick={()=>setShowAdmin(true)} className="text-[10px] bg-white/10 px-3 py-1.5 rounded-full font-bold">ADMIN</button>
       </div>
+
+      {isAdminFree && <div className="bg-green-500/20 border border-green-500/40 text-green-300 text-xs p-2 rounded-xl mb-3 text-center">🔓 Mode Owner Aktif: Sapa GRATIS tanpa potong saldo, tetap dapat Cuan Rp 800!</div>}
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-white/10 p-3 rounded-xl">
+          <div className="text-[10px] opacity-60">Saldo Sapa</div>
+          <div className="font-bold text-sm">Rp {saldo.toLocaleString()}</div>
+          {isAdminFree && <div className="text-[9px] text-green-400">FREE</div>}
+        </div>
+        <div className="bg-white/10 p-3 rounded-xl">
+          <div className="text-[10px] opacity-60">Cuan</div>
+          <div className="font-bold text-sm text-green-400">Rp {cuan.toLocaleString()}</div>
+        </div>
+        <div className="bg-yellow-500/20 p-3 rounded-xl border border-yellow-400/40">
+          <div className="text-[10px]">SeaBank</div>
+          <div className="font-black text-sm text-yellow-300">Rp {seaBank.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <button onClick={() => setShowTopup(true)} className="w-full bg-[#8b5cf6] py-3 rounded-xl font-bold mb-4">
+        + Topup Saldo
+      </button>
+
+      <div className="space-y-3">
+        {users.map(u => (
+          <div key={u.id} className="bg-[#1c1633] p-3 rounded-2xl flex justify-between items-center">
+            <div className="flex gap-3 items-center">
+              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center font-bold">{u.name[0]}</div>
+              <div>
+                <div className="font-semibold text-sm">{u.name} • {u.jarak}</div>
+                <div className="text-xs opacity-60">{u.bio}</div>
+              </div>
+            </div>
+            <button onClick={() => handleSapa(u)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${isAdminFree ? 'bg-green-500 text-black' : 'bg-white text-black'}`}>
+              {isAdminFree ? 'Sapa FREE' : 'Sapa 1k'}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {showAdmin && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-[#1c1633] w-full rounded-2xl p-5 border border-yellow-500/30 max-h-[90vh] overflow-auto">
+            <h2 className="font-bold text-yellow-300 mb-4">ADMIN PANEL - Khusus Kamu</h2>
+            
+            <div className="bg-black/40 p-3 rounded-xl mb-4">
+              <div className="text-xs opacity-60">SeaBank Display</div>
+              <div className="text-xl font-black">Rp {seaBank.toLocaleString()}</div>
+            </div>
+
+            <div className="bg-white/5 p-3 rounded-xl mb-4 flex justify-between items-center">
+              <div>
+                <div className="text-sm font-bold">Mode Owner Gratis Sapa</div>
+                <div className="text-[11px] opacity-60">Aktifkan biar kamu sapa tanpa potong saldo</div>
+              </div>
+              <button onClick={()=>setIsAdminFree(!isAdminFree)} className={`px-4 py-2 rounded-full font-bold text-sm ${isAdminFree ? 'bg-green-500 text-black' : 'bg-white/20'}`}>
+                {isAdminFree ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            <label className="text-xs">Set Saldo SeaBank Baru:</label>
+            <input value={adminInput} onChange={e=>setAdminInput(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-xl p-3 mt-1 mb-3 text-white" />
+
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <button onClick={()=>resetSeaBank(1000000)} className="bg-white/10 py-2 rounded-xl text-sm">1 JT</button>
+              <button onClick={()=>resetSeaBank(5000000)} className="bg-yellow-500 text-black py-2 rounded-xl text-sm font-bold">5 JT</button>
+              <button onClick={()=>resetSeaBank(10000000)} className="bg-white/10 py-2 rounded-xl text-sm">10 JT</button>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={()=>resetSeaBank(adminInput)} className="flex-1 bg-yellow-500 text-black py-3 rounded-xl font-bold">SIMPAN SEABANK</button>
+              <button onClick={()=>setShowAdmin(false)} className="flex-1 bg-white/10 py-3 rounded-xl">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTopup && (
+        <div className="fixed inset-0 bg-black/70 flex items-end justify-center p-4 z-50">
+          <div className="bg-[#1c1633] w-full max-w-[430px] rounded-t-3xl p-5">
+            <div className="flex justify-between mb-4">
+              <h2 className="font-bold">Topup</h2>
+              <button onClick={() => setShowTopup(false)}>✕</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[10000,25000,50000,100000].map(a=>(
+                <button key={a} onClick={()=>handleTopup(a)} className="bg-white/10 p-3 rounded-xl text-left">
+                  <div className="font-bold">Rp {a.toLocaleString()}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
