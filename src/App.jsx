@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const seaBankNo = "9013xxxxxxxx"; 
+const seaBankNo = "901122061680"; 
 const seaBankName = "TRI ANGGA";
 
 const users = [
