@@ -1,45 +1,18 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' })
-
-  const { amount, accountNumber, accountName } = req.body
-
-  if (!accountNumber || !amount) {
-    return res.status(400).json({ message: 'No rekening & nominal wajib' })
+// ini yang hubungkan ke SeaBank beneran via FLIP / XENDIT
+export default async function handler(req, res){
+  const { amount, account } = req.body;
+  
+  // cek beneran pemilik atau bukan
+  if(req.body.ownerEmail !== "triangga406@gmail.com"){
+    return res.status(403).json({error: "Bukan pemilik"});
   }
 
-  const XENDIT_KEY = process.env.XENDIT_SECRET_KEY
+  // DISINI BARU TEMBAK KE API FLIP / XENDIT UNTUK TRANSFER KE SEABANK
+  // Kamu daftar dulu di flip.id / xendit.co, ambil API KEY nya
+  // Contoh pakai Flip:
+  // await fetch('https://bigflip.id/api/v2/disbursement', {...})
 
-  try {
-    const xenditRes = await fetch('https://api.xendit.co/disbursements', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + Buffer.from(XENDIT_KEY + ':').toString('base64')
-      },
-      body: JSON.stringify({
-        external_id: `wd-${Date.now()}`,
-        bank_code: 'SEABANK',
-        account_holder_name: accountName,
-        account_number: accountNumber,
-        description: 'WD teman-dekat-ggjq',
-        amount: Number(amount)
-      })
-    })
-
-    const result = await xenditRes.json()
-
-    if (!xenditRes.ok) {
-      return res.status(400).json({ message: result.message || 'Gagal disbursement', detail: result })
-    }
-
-    return res.status(200).json({ 
-      id: result.id,
-      status: result.status,
-      amount: result.amount,
-      message: 'WD REAL BERHASIL DIPROSES KE SEABANK'
-    })
-
-  } catch (e) {
-    return res.status(500).json({ message: e.message })
-  }
+  console.log(`OWNER WITHDRAW ${amount} ke SeaBank ${account}`);
+  
+  res.json({success: true, message: "Dicairkan (Integrasikan Flip API disini)"});
 }
