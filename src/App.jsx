@@ -1,51 +1,117 @@
-import { useState } from "react";
+import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient.js'
 
-export default function App() {
-  const [coins, setCoins] = useState(1000);
-  const [saldo, setSaldo] = useState(0);
-  const seaBankRek = "901122061680";
-  const owner = "Tri Angga";
+function App() {
+  const [user, setUser] = useState(null)
+  const [teman, setTeman] = useState([])
+  const [nama, setNama] = useState('')
+  const [wa, setWa] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const convert = () => {
-    if(coins < 1000) return alert("Coins kurang");
-    setCoins(c=>c-1000);
-    setSaldo(s=>s+500000);
-    alert("1000 Coins -> Rp500.000 masuk Saldo!");
-  };
+  // Cek login
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) loadTeman()
+    })
 
-  const wd = () => {
-    if(saldo < 1000) return alert("Convert dulu! Saldo masih Rp0");
-    alert(`WD Rp${saldo} ke SeaBank ${seaBankRek} a.n ${owner} SUKSES!`);
-    setSaldo(0);
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) loadTeman()
+      else setTeman([])
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
-  const copyRek = () => {
-    navigator.clipboard.writeText(seaBankRek);
-    alert("Copy: "+seaBankRek);
-  };
+  // Load data teman dekat
+  const loadTeman = async () => {
+    const { data, error } = await supabase.from('teman_dekat').select('*').order('created_at', { ascending: false })
+    if (!error) setTeman(data)
+  }
 
+  // Auth
+  const handleSignUp = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    const { error } = await supabase.auth.signUp({ email, password })
+    setLoading(false)
+    if (error) alert(error.message)
+    else alert('Cek email mu buat verifikasi!')
+  }
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    if (error) alert(error.message)
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
+
+  // CRUD Teman
+  const tambahTeman = async (e) => {
+    e.preventDefault()
+    if (!nama) return
+    const { error } = await supabase.from('teman_dekat').insert([{ nama, no_wa: wa, user_id: user.id }])
+    if (!error) {
+      setNama('')
+      setWa('')
+      loadTeman()
+    } else alert(error.message)
+  }
+
+  const hapusTeman = async (id) => {
+    await supabase.from('teman_dekat').delete().eq('id', id)
+    loadTeman()
+  }
+
+  // UI Login
+  if (!user) {
+    return (
+      <div style={{ maxWidth: 360, margin: '40px auto', fontFamily: 'sans-serif', padding: 20 }}>
+        <h1>Teman Dekat - Login</h1>
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ padding: 12 }} />
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={{ padding: 12 }} />
+          <button type="submit" disabled={loading} style={{ padding: 12, background: 'black', color: 'white' }}>{loading ? 'Loading...' : 'Login'}</button>
+          <button type="button" onClick={handleSignUp} style={{ padding: 12 }}>Daftar Akun Baru</button>
+        </form>
+      </div>
+    )
+  }
+
+  // UI Utama
   return (
-    <div className="bg-black min-h-screen text-white p-4">
-      <div className="bg-[#1a1a1a] p-5 rounded-3xl border border-yellow-500/20">
-        <p className="text-zinc-400 text-sm">Saldo <span className="bg-yellow-400 text-black text-[10px] px-2 py-1 rounded-full font-black ml-2">VERIFIED</span></p>
-        <h1 className="text-4xl font-black">Rp{saldo.toLocaleString()}</h1>
-        <p className="text-yellow-400 text-sm">{coins} Coins • 1 Like = Rp500</p>
-        <div className="mt-3 bg-black p-3 rounded-xl border border-orange-500">
-          <p className="text-xs text-orange-400">SeaBank Aktif:</p>
-          <div className="flex justify-between items-center">
-            <b className="font-mono">{seaBankRek}</b>
-            <button onClick={copyRek} className="bg-orange-500 text-black px-3 py-1 rounded-full text-xs font-black">COPY</button>
+    <div style={{ maxWidth: 400, margin: '20px auto', fontFamily: 'sans-serif', padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <h2>Halo, {user.email}</h2>
+        <button onClick={handleLogout}>Logout</button>
+      </div>
+
+      <form onSubmit={tambahTeman} style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '20px 0', border: '1px solid #ddd', padding: 15, borderRadius: 10 }}>
+        <h3>Tambah Teman Dekat</h3>
+        <input placeholder="Jeneng" value={nama} onChange={e => setNama(e.target.value)} style={{ padding: 10 }} required />
+        <input placeholder="No WA (opsional)" value={wa} onChange={e => setWa(e.target.value)} style={{ padding: 10 }} />
+        <button type="submit" style={{ padding: 10, background: '#25D366', color: 'white', border: 'none', borderRadius: 5 }}>Simpan</button>
+      </form>
+
+      <h3>Daftar Teman ({teman.length})</h3>
+      {teman.map(t => (
+        <div key={t.id} style={{ border: '1px solid #eee', padding: 10, borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+          <div>
+            <b>{t.nama}</b><br />
+            <small>{t.no_wa}</small>
           </div>
-          <p className="text-[10px] text-zinc-500">a.n {owner}</p>
+          <button onClick={() => hapusTeman(t.id)} style={{ color: 'red' }}>Hapus</button>
         </div>
-      </div>
-
-      <div className="mt-5 grid gap-3">
-        <button onClick={convert} className="w-full bg-yellow-400 text-black font-black py-4 rounded-2xl">CONVERT 1000 Coins → Rp500k</button>
-        <button onClick={wd} className="w-full bg-orange-500 text-black font-black py-4 rounded-2xl">WD KE SEABANK {seaBankRek.slice(-4)}</button>
-      </div>
-
-      <p className="text-center text-[11px] text-zinc-500 mt-4">ISO NARIK LANGSUNG - ORA NGENTENI WONG TOPUP - CONVERT -> WD -> MASUK {seaBankRek}</p>
+      ))}
     </div>
-  );
+  )
 }
+
+export default App
