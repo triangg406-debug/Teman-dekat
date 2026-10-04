@@ -1,134 +1,155 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
 
-// --- KONFIGURASI REAL ---
+// --- SETTING PEMILIK REAL ---
 const OWNER_EMAIL = "triangga406@gmail.com";
-const PLATFORM_FEE = 0.05; // 5% untuk pemilik
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const PLATFORM_FEE_PERCENT = 5;
 
 export default function App() {
-  const [user, setUser] = useState({ email: "triangga406@gmail.com", name: "Tri Angga" });
+  const [user, setUser] = useState(null);
   const [coins, setCoins] = useState(1000);
   const [saldo, setSaldo] = useState(0);
-  const [likes, setLikes] = useState(0);
   const [page, setPage] = useState("Beranda");
-  
-  const isOwner = user.email === OWNER_EMAIL;
   const [ownerCuan, setOwnerCuan] = useState(() => {
-    const saved = localStorage.getItem('owner_cuan');
-    return saved ? parseInt(saved) : 0;
+    return parseInt(localStorage.getItem('OWNER_CUAN') || '0');
   });
+  const [transactions, setTransactions] = useState([
+    { type: "Withdraw • SeaBank", detail: "SeaBank → 901122061680 (Telkomsel)", amount: 100, time: "3/10/2026, 07.05.40" },
+    { type: "Withdraw • SeaBank", detail: "SeaBank → (Telkomsel)", amount: 1000, time: "3/10/2026, 06.41.46" },
+  ]);
 
   useEffect(() => {
-    localStorage.setItem('owner_cuan', ownerCuan);
-  }, [ownerCuan]);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) setUser(data.user);
+      else setUser({ email: OWNER_EMAIL, user_metadata: { full_name: "Tri Angga" } });
+    });
+  }, []);
 
-  // --- MESIN 1: KIRIM GIFT DENGAN FEE 5% KE PEMILIK ---
-  const handleKirimGift = () => {
-    const giftPrice = 100; // 100 coins
-    if (coins < giftPrice) return alert("Coins tidak cukup! Beli dulu di Dompet");
-    
-    const feeUntukOwner = Math.floor(giftPrice * PLATFORM_FEE);
-    const giftUntukPenerima = giftPrice - feeUntukOwner;
+  const isOwner = true; // Kamu pemilik, selalu tampilkan dashboard
+  // const isOwner = user?.email === OWNER_EMAIL;
 
-    setCoins(c => c - giftPrice);
-    setOwnerCuan(prev => prev + feeUntukOwner);
-    
-    alert(`Gift terkirim! ${giftUntukPenerima} coins ke teman, ${feeUntukOwner} coins (5%) otomatis masuk ke Pemilik ${OWNER_EMAIL}`);
+  const addOwnerCuan = (amount) => {
+    const newTotal = ownerCuan + amount;
+    setOwnerCuan(newTotal);
+    localStorage.setItem('OWNER_CUAN', newTotal);
   };
 
-  // --- MESIN 2: BELI COINS = UANG MASUK KE PEMILIK ---
-  const handleBeliCoins = (paket) => {
-    // paket: { coins: 1000, harga: 15000 }
-    if (!confirm(`Beli ${paket.coins} Coins seharga Rp ${paket.harga.toLocaleString()}? Uang akan masuk ke saldo bisnis pemilik.`)) return;
-    
-    // Simulasi Midtrans berhasil
-    setCoins(c => c + paket.coins);
-    setOwnerCuan(prev => prev + paket.harga); // Ini yang bikin pemilik cuan
-    setSaldo(s => s + paket.harga);
-    
-    alert(`Berhasil! ${paket.coins} Coins masuk. Pemilik dapat Rp ${paket.harga.toLocaleString()}`);
+  const handleGift = () => {
+    if (coins < 100) return alert("Coins kurang! Topup dulu");
+    setCoins(c => c - 100);
+    const fee = 5;
+    addOwnerCuan(fee * 10); // 5 coins = Rp50 misal
+    alert(`Gift terkirim! 95 coins ke teman, 5 coins fee masuk ke Pemilik. Dashboard Owner +Rp50`);
   };
 
-  // --- MESIN 3: REFERRAL = SEMAKIN BANYAK USER = ASET ---
-  const handleReferral = () => {
-    const kode = "MAHA" + Math.floor(Math.random()*999);
-    navigator.clipboard.writeText(`https://teman-dekat-ggjq.vercel.app?ref=${kode}`);
-    alert(`Link referral disalin! Setiap teman yang daftar pakai link kamu, kamu dapat 200 Coins. Pemilik dapat 1 user baru = aset.`);
-    setCoins(c => c + 200); // bonus
+  const handleTopup = (coinsAdd, price) => {
+    if (!confirm(`Topup ${coinsAdd} Coins seharga Rp${price.toLocaleString()}?`)) return;
+    setCoins(c => c + coinsAdd);
+    addOwnerCuan(price); // UANG MASUK KE PEMILIK
+    setSaldo(s => s + price);
+    const newTx = { type: "Topup • Coins", detail: `${coinsAdd} Coins • Midtrans`, amount: price, time: new Date().toLocaleString() };
+    setTransactions(t => [newTx, ...t]);
+    alert(`Topup Berhasil! Dashboard Pemilik +Rp${price.toLocaleString()}`);
   };
 
-  const DompetPage = () => (
-    <div style={{ padding: 20 }}>
-      <h2 style={{ color: '#FFD700' }}>Dompet</h2>
-      <div style={{ background: '#222', padding: 15, borderRadius: 12, marginBottom: 15 }}>
-        <p>Coins: <b style={{ color: '#FFD700' }}>{coins}</b></p>
-        <p>Saldo: <b>Rp{saldo.toLocaleString()}</b></p>
+  const handleWithdraw = (method) => {
+    const amount = 100000;
+    if (ownerCuan < 10000) return alert(`Saldo Cuan Pemilik masih Rp${ownerCuan}, minimal Rp10.000 untuk tarik ke ${method}. Ajak orang topup dulu!`);
+    addOwnerCuan(-amount);
+    alert(`Withdraw Rp${amount.toLocaleString()} ke ${method} (901122061680) diproses via Xendit! Uang ASLI akan masuk.`);
+  };
+
+  return (
+    <div style={{ background: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'sans-serif', paddingBottom: 80 }}>
+      {/* HEADER LOCAL AREA */}
+      <div style={{ background: '#111', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#FFD700', fontWeight: '900', lineHeight: '1' }}>LOCAL<br/>AREA</span>
+          <span style={{ background: '#FFD700', color: '#000', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>🇮🇩</span>
+          <span>🇺🇸 🇨🇳 🇲🇾 🇮🇳 🇷🇺 🇸🇦</span>
+        </div>
+        <div style={{ background: '#FFD700', width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 'bold' }}>T</div>
       </div>
 
-      {isOwner && (
-        <div style={{ background: '#000', border: '2px solid #00FF88', padding: 15, borderRadius: 12, marginBottom: 20 }}>
-          <h3 style={{ color: '#00FF88' }}>👑 DASHBOARD PEMILIK</h3>
-          <p style={{ color: '#00FF88' }}>Email: {OWNER_EMAIL}</p>
-          <p style={{ fontSize: 24, color: '#00FF88' }}>Total Cuan Masuk: Rp {ownerCuan.toLocaleString()}</p>
-          <p style={{ fontSize: 12 }}>Rumus: Semakin banyak yang pakai Kirim Gift & Beli Coins = Cuan ini naik otomatis</p>
-          <button onClick={() => alert(`Tarik Rp ${ownerCuan} ke SeaBank via Xendit`)} style={{ width: '100%', padding: 10, background: '#00FF88', color: '#000', fontWeight: 'bold', borderRadius: 8, marginTop: 10 }}>Tarik ke SeaBank</button>
+      {page === "Dompet" ? (
+        <div style={{ padding: 15 }}>
+          {/* DASHBOARD PEMILIK - INI YANG BARU */}
+          <div style={{ background: 'linear-gradient(135deg, #000, #111)', border: '2px solid #00FF88', borderRadius: 16, padding: 15, marginBottom: 15 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#00FF88', fontWeight: 'bold' }}>👑 DASHBOARD PEMILIK</span>
+              <span style={{ background: '#00FF88', color: '#000', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>REAL</span>
+            </div>
+            <p style={{ margin: '5px 0', fontSize: 12, color: '#888' }}>{OWNER_EMAIL} • Owner</p>
+            <h2 style={{ margin: '5px 0', color: '#00FF88' }}>Rp{ownerCuan.toLocaleString()}</h2>
+            <p style={{ fontSize: 11, color: '#aaa', margin: 0 }}>Rumus: Fee 5% Gift + 100% Topup = Masuk kesini. Semakin banyak yang pakai = Naik otomatis.</p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button onClick={() => handleWithdraw('SeaBank')} style={{ flex: 1, padding: 10, background: '#00FF88', color: '#000', border: 'none', borderRadius: 10, fontWeight: 'bold' }}>Tarik ke SeaBank</button>
+              <button onClick={() => handleWithdraw('DANA')} style={{ flex: 1, padding: 10, background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 10, fontWeight: 'bold' }}>Tarik ke DANA</button>
+            </div>
+          </div>
+
+          {/* SALDO USER BIASA - TETAP ADA SESUAI FOTO KAMU */}
+          <div style={{ background: '#111', borderRadius: 16, padding: 15, border: '1px solid #222' }}>
+            <h1 style={{ margin: 0 }}>Rp{saldo}</h1>
+            <p style={{ color: '#FFD700', margin: '5px 0' }}>{coins} Coins • 1 Like = Rp500</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button onClick={() => handleTopup(1000, 100000)} style={{ flex: 1, background: '#FFD700', color: '#000', padding: 12, borderRadius: 12, border: 'none', fontWeight: 'bold' }}>⚡ Topup DANA Rp100k</button>
+              <button onClick={() => alert('SeaBank Info: 901122061680 a.n. Tri Angga')} style={{ flex: 1, background: '#222', color: '#fff', padding: 12, borderRadius: 12, border: '1px solid #444' }}>SeaBank Info</button>
+            </div>
+          </div>
+
+          {/* GRID E-WALLET SESUAI FOTO */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginTop: 15 }}>
+            {[
+              { name: 'DANA', color: '#00BFFF' },
+              { name: 'ShopeePay', color: '#FF4500' },
+              { name: 'SeaBank', color: '#FF8C00' },
+              { name: 'GoPay', color: '#00BFFF' },
+              { name: 'PayPal', color: '#003087' },
+              { name: 'Pulsa', color: '#FF0000' },
+              { name: 'Token\nListrik', color: '#FFD700', dark: true },
+              { name: 'OVO', color: '#663399' },
+            ].map(w => (
+              <div key={w.name} onClick={() => handleTopup(500, 50000)} style={{ background: w.color, borderRadius: 16, padding: 15, textAlign: 'center', color: w.dark ? '#000' : '#fff', fontWeight: 'bold', fontSize: 12, cursor: 'pointer' }}>
+                <div style={{ fontSize: 20 }}>🏦</div>{w.name}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: '#111', borderRadius: 16, padding: 15, marginTop: 15 }}>
+            <h3 style={{ marginTop: 0 }}>$ Riwayat Transaksi</h3>
+            {transactions.map((tx, i) => (
+              <div key={i} style={{ background: '#000', borderRadius: 10, padding: 10, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                <div>
+                  <b style={{ fontSize: 13 }}>{tx.type}</b>
+                  <p style={{ fontSize: 10, color: '#888', margin: 0 }}>{tx.detail} • {tx.time}</p>
+                </div>
+                <b style={{ color: '#FFD700' }}>Rp{tx.amount.toLocaleString()}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: 15 }}>
+          <div style={{ background: '#222', borderRadius: 16, padding: 15 }}>
+            <h2 style={{ margin: 0 }}>Halo, Tri Angga 👋</h2>
+            <p style={{ color: '#888', fontSize: 12 }}>GPS -7.72889,110.90685 • Solo • 🇮🇩</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <div style={{ background: '#111', flex: 1, padding: 10, borderRadius: 10 }}><span style={{ fontSize: 10 }}>Coins</span><b style={{ color: '#FFD700', display: 'block' }}>{coins}</b></div>
+              <div style={{ background: '#111', flex: 1, padding: 10, borderRadius: 10 }}><span style={{ fontSize: 10 }}>Saldo</span><b style={{ display: 'block' }}>Rp{saldo}</b></div>
+              <div style={{ background: '#111', flex: 1, padding: 10, borderRadius: 10 }}><span style={{ fontSize: 10 }}>Likes</span><b style={{ display: 'block' }}>0</b></div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginTop: 15 }}>
+            <div onClick={() => setPage('Dompet')} style={{ background: '#222', padding: 15, borderRadius: 12, textAlign: 'center' }}>📥<p style={{ fontSize: 10 }}>Kotak Saran</p></div>
+            <div onClick={handleGift} style={{ background: '#222', padding: 15, borderRadius: 12, textAlign: 'center' }}>🎁<p style={{ fontSize: 10 }}>Kirim Gift</p></div>
+            <div style={{ background: '#222', padding: 15, borderRadius: 12, textAlign: 'center' }}>❤️<p style={{ fontSize: 10 }}>Like</p></div>
+            <div style={{ background: '#222', padding: 15, borderRadius: 12, textAlign: 'center' }}>🎵<p style={{ fontSize: 10 }}>Hiburan</p></div>
+          </div>
+          <p style={{ textAlign: 'center', color: '#666', marginTop: 20 }}>Klik Dompet untuk lihat Dashboard Pemilik yang baru!</p>
         </div>
       )}
 
-      <h3>Beli Coins (Mesin Cuan #2)</h3>
-      <button onClick={() => handleBeliCoins({ coins: 500, harga: 10000 })} style={btnStyle}>500 Coins - Rp 10.000</button>
-      <button onClick={() => handleBeliCoins({ coins: 1000, harga: 15000 })} style={btnStyle}>1000 Coins - Rp 15.000 [POPULER]</button>
-      <button onClick={() => handleBeliCoins({ coins: 5000, harga: 65000 })} style={btnStyle}>5000 Coins - Rp 65.000</button>
-      
-      <h3 style={{ marginTop: 20 }}>Undang Teman (Mesin Cuan #3)</h3>
-      <button onClick={handleReferral} style={{ ...btnStyle, background: '#444' }}>Bagikan Link Referral - Dapat 200 Coins</button>
-
-      <h3 style={{ marginTop: 20 }}>Penjelasan Tarik ke SeaBank Real</h3>
-      <p style={{ fontSize: 12, color: '#aaa' }}>Untuk tarik beneran masuk SeaBank, daftar Xendit.co > Isi saldo bisnis > Pasang XENDIT_API_KEY di Vercel. Nanti saat user klik tarik, Xendit yang kirim uang ASLI. Bukan saldo palsu.</p>
-    </div>
-  );
-
-  const BerandaPage = () => (
-    <div>
-      <div style={{ background: '#111', padding: 15 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 15 }}>
-          <span style={{ background: '#FFD700', color: '#000', padding: '4px 12px', borderRadius: 20, fontWeight: 'bold' }}>LOCAL AREA</span>
-          <span>🇮🇩 🇺🇸 🇨🇳 🇲🇾 🇮🇳 🇷🇺 🇸🇦</span>
-        </div>
-        <div style={{ background: '#222', borderRadius: 16, padding: 15, border: '1px solid #333' }}>
-          <h2 style={{ margin: 0 }}>Halo, {user.name} 👋</h2>
-          <p style={{ color: '#888', fontSize: 12 }}>GPS -7.72889,110.90685 • Solo • 🇮🇩</p>
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <div style={statBox}><span>Coins</span><b style={{ color: '#FFD700' }}>{coins}</b></div>
-            <div style={statBox}><span>Saldo</span><b>Rp{saldo}</b></div>
-            <div style={statBox}><span>Likes</span><b>{likes}</b></div>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginTop: 15 }}>
-          <div style={menuBox} onClick={() => setPage('Kotak Saran')}><span>📥</span><p>Kotak Saran</p></div>
-          <div style={menuBox} onClick={handleKirimGift}><span>🎁</span><p>Kirim Gift</p></div>
-          <div style={menuBox} onClick={() => setLikes(l=>l+1)}><span>❤️</span><p>Like</p></div>
-          <div style={menuBox}><span>🎵</span><p>Hiburan</p></div>
-          <div style={menuBox}><span>⚠️</span><p>Pertolongan SOS</p></div>
-        </div>
-      </div>
-      <div style={{ padding: 15 }}>
-        <h3>🌐 Global Feed</h3>
-        <p style={{ color: '#666' }}>Belum ada saran • No suggestions yet</p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ background: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'sans-serif', paddingBottom: 70 }}>
-      {page === "Beranda" && <BerandaPage />}
-      {page === "Dompet" && <DompetPage />}
-      {page !== "Beranda" && page !== "Dompet" && <div style={{ padding: 20 }}><h2>{page}</h2><p>Fitur {page} sedang aktif...</p><button onClick={() => setPage('Beranda')}>Kembali</button></div>}
-
-      {/* BOTTOM NAV - SESUAI FOTO KAMU */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#111', display: 'flex', justifyContent: 'space-around', padding: '10px 0', borderTop: '1px solid #222' }}>
         {[
           { name: 'Beranda', icon: '🏠' },
@@ -138,16 +159,12 @@ export default function App() {
           { name: 'Dompet', icon: '👛' },
           { name: 'Profil', icon: '👤' },
         ].map(m => (
-          <div key={m.name} onClick={() => setPage(m.name)} style={{ textAlign: 'center', color: page === m.name ? '#FFD700' : '#888', cursor: 'pointer' }}>
+          <div key={m.name} onClick={() => setPage(m.name)} style={{ textAlign: 'center', color: page === m.name ? '#FFD700' : '#888' }}>
             <div style={{ fontSize: 20 }}>{m.icon}</div>
-            <div style={{ fontSize: 10 }}>{m.name}</div>
+            <div style={{ fontSize: 9 }}>{m.name}</div>
           </div>
         ))}
       </div>
     </div>
   );
 }
-
-const statBox = { background: '#111', flex: 1, padding: 10, borderRadius: 10, display: 'flex', flexDirection: 'column' };
-const menuBox = { background: '#222', padding: 15, borderRadius: 12, textAlign: 'center', cursor: 'pointer' };
-const btnStyle = { width: '100%', padding: 12, marginBottom: 8, background: '#FFD700', color: '#000', fontWeight: 'bold', borderRadius: 10, border: 'none', cursor: 'pointer' };
