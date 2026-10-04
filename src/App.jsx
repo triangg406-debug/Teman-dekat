@@ -1,162 +1,100 @@
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useState, useEffect } from 'react';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+export default function App() {
+  const SEA_BANK = "9017011680";
+  const NAMA = "TRI ANGGA";
 
-export default function App(){
-  const [user, setUser] = useState(()=> JSON.parse(localStorage.getItem('td_user') || 'null'))
-  const [users,setUsers]=useState([])
-  const [pos,setPos]=useState(null)
-  const [tab,setTab]=useState('dekat')
-  const [nama,setNama]=useState('')
-  const [wa,setWa]=useState('')
-  const [coins,setCoins]=useState(()=>Number(localStorage.getItem('td_coins')||47500))
-  const [trialStart,setTrialStart]=useState(()=>localStorage.getItem('td_trial')||new Date().toISOString())
-  const [showTopup,setShowTopup]=useState(false)
-  const [showGift,setShowGift]=useState(null)
-  const [saldoRp,setSaldoRp]=useState(()=>Number(localStorage.getItem('td_rp')||0))
-  const [loading,setLoading]=useState(false)
+  const [coins, setCoins] = useState(1000);
+  const [saldo, setSaldo] = useState(500000);
+  const [riwayat, setRiwayat] = useState([]);
+  const [tab, setTab] = useState('dompet');
+  const [wdNominal, setWdNominal] = useState(500000);
+  const [loading, setLoading] = useState(false);
+  const [notif, setNotif] = useState("");
 
-  useEffect(()=>{
-    if(!localStorage.getItem('td_trial')) localStorage.setItem('td_trial',trialStart)
-    navigator.geolocation.getCurrentPosition(p=>setPos({lat:p.coords.latitude,lng:p.coords.longitude}),()=>{})
-    supabase.from('teman_dekat').select('*').order('id',{ascending:false}).then(r=>{if(r.data)setUsers(r.data)})
-  },[])
-  useEffect(()=>{localStorage.setItem('td_coins',coins)},[coins])
-  useEffect(()=>{localStorage.setItem('td_rp',saldoRp)},[saldoRp])
+  useEffect(() => {
+    const saved = localStorage.getItem('t-gqjq-riwayat');
+    const savedSaldo = localStorage.getItem('t-gqjq-saldo');
+    const savedCoins = localStorage.getItem('t-gqjq-coins');
+    if (saved) setRiwayat(JSON.parse(saved));
+    if (savedSaldo) setSaldo(Number(savedSaldo));
+    if (savedCoins) setCoins(Number(savedCoins));
+  }, []);
 
-  // TRIAL 7 HARI
-  const trialDaysLeft=()=>{
-    const diff=Date.now()-new Date(trialStart).getTime()
-    const days=Math.floor(diff/86400000)
-    return Math.max(0,7-days)
-  }
-  const isTrial=trialDaysLeft()>0
+  useEffect(() => {
+    localStorage.setItem('t-gqjq-riwayat', JSON.stringify(riwayat));
+    localStorage.setItem('t-gqjq-saldo', saldo.toString());
+    localStorage.setItem('t-gqjq-coins', coins.toString());
+  }, [riwayat, saldo, coins]);
 
-  const login = async()=>{
-    if(!nama||!wa) return alert('Isi nama & WA!')
-    setLoading(true)
-    const { data } = await supabase.from('teman_dekat').select('*').eq('nama',nama).eq('no_wa',wa).limit(1)
-    setLoading(false)
-    if(data && data.length>0){
-      localStorage.setItem('td_user', JSON.stringify(data[0]))
-      setUser(data[0])
-    } else {
-      alert('Akun belum ada. Klik DAFTAR dulu')
-    }
-  }
+  const showNotif = (msg) => {
+    setNotif(msg);
+    setTimeout(() => setNotif(""), 3000);
+  };
 
-  const daftar=async()=>{
-    if(!nama||!wa) return alert('Isi nama & WA!')
-    setLoading(true)
-    const { data, error } = await supabase.from('teman_dekat').insert([{nama,no_wa:wa,foto_url:`https://i.pravatar.cc/150?u=${nama}`,lat:pos?.lat,lng:pos?.lng}]).select()
-    setLoading(false)
-    if(error) return alert(error.message)
-    localStorage.setItem('td_user', JSON.stringify(data[0]))
-    localStorage.setItem('td_trial', new Date().toISOString())
-    setUser(data[0])
-    alert('DAFTAR REAL + Trial 7 hari aktif!')
-  }
+  const handleWD = () => {
+    if (saldo < 10000) return showNotif("Saldo minimal Rp10.000 untuk WD");
+    if (wdNominal > saldo) return showNotif("Saldo tidak cukup!");
+    if (wdNominal < 10000) return showNotif("Minimal WD Rp10.000");
+    setLoading(true);
+    setTimeout(() => {
+      const trx = {
+        id: Date.now(),
+        jenis: "PENARIKAN",
+        nominal: wdNominal,
+        tujuan: `SeaBank ${SEA_BANK} a.n ${NAMA}`,
+        status: "BERHASIL CAIR",
+        waktu: new Date().toLocaleString('id-ID'),
+      };
+      setRiwayat([trx, ...riwayat]);
+      setSaldo(saldo - wdNominal);
+      setLoading(false);
+      showNotif(`SUKSES! Rp${wdNominal.toLocaleString('id-ID')} cair ke SeaBank 1680`);
+      setTab('riwayat');
+    }, 1500);
+  };
 
-  const logout=()=>{
-    localStorage.removeItem('td_user')
-    setUser(null)
-  }
-
-  const handleChat=(u)=>{
-    if(isTrial){
-      window.open(`https://wa.me/${(u.no_wa||'').replace(/\D/g,'')}?text=Hai ${u.nama}`,'_blank')
-    }else{
-      if(coins<200){setShowTopup(true);return}
-      setCoins(c=>c-200)
-      window.open(`https://wa.me/${(u.no_wa||'').replace(/\D/g,'')}`,'_blank')
-    }
-  }
-
-  const handleVideo=(u)=>{
-    if(isTrial){
-      alert(`Video call ${u.nama} - FREE trial`)
-    }else{
-      if(coins<500){setShowTopup(true);return}
-      setCoins(c=>c-500)
-      alert(`Video call ${u.nama} -500 koin`)
-    }
-  }
-
-  // GIFT TETEP PAKE POIN WALAU TRIAL
-  const kirimHadiah=(u,gift)=>{
-    if(coins<gift.coin){setShowTopup(true);return}
-    setCoins(c=>c-gift.coin)
-    const dapat=Math.floor(gift.rp*0.7)
-    setSaldoRp(r=>r+dapat)
-    alert(`Kirim ${gift.name} ke ${u.nama}! Kamu kepotong ${gift.coin} poin. Penerima dapat Rp ${dapat}`)
-    setShowGift(null)
-  }
-
-  const topup=(p)=>{
-    setCoins(c=>c+p.coin)
-    setShowTopup(false)
-    alert(`Topup +${p.coin} koin berhasil!`)
-  }
-
-  // HALAMAN LOGIN
-  if(!user){
-    return(
-      <div className="min-h-screen bg-[#0f0a1e] text-white flex flex-col justify-center p-6">
-        <h1 className="text-4xl font-black text-center text-yellow-400">TEMAN DEKAT</h1>
-        <p className="text-center text-zinc-400 mt-2">MAHA - Trial 7 Hari Gratis</p>
-        <div className="bg-zinc-900 p-6 rounded-3xl mt-8">
-          <input value={nama} onChange={e=>setNama(e.target.value)} placeholder="Nama REAL" className="w-full p-4 rounded-xl bg-black mb-3"/>
-          <input value={wa} onChange={e=>setWa(e.target.value)} placeholder="WA REAL 08xxx" className="w-full p-4 rounded-xl bg-black mb-4"/>
-          <button onClick={login} disabled={loading} className="w-full bg-yellow-400 text-black p-4 rounded-xl font-black mb-3">{loading?'...':'LOGIN'}</button>
-          <button onClick={daftar} disabled={loading} className="w-full bg-zinc-800 text-white p-4 rounded-xl font-bold">DAFTAR + DAPAT TRIAL 7 HARI</button>
+  return (
+    <div className="min-h-screen bg-black text-white pb-20">
+      <div className="max-w-md mx-auto">
+        <div className="p-4 flex justify-between items-center border-b border-zinc-900 sticky top-0 bg-black z-10">
+          <h1 className="font-bold">T-GQJQ • {NAMA} • KUNCI FINAL</h1>
         </div>
-      </div>
-    )
-  }
-
-  return(
-    <div className="min-h-screen bg-[#0f0a1a] text-white pb-24">
-      <div className="flex justify-between items-center p-4 bg-yellow-400 text-black sticky top-0 z-10">
-        <span className="font-black">MAHA {users.length} ORANG • {coins} POIN</span>
-        <button onClick={logout} className="bg-black text-yellow-400 px-4 py-1 rounded-full text-xs font-bold">LOGOUT</button>
-      </div>
-
-      <div className="px-4 pt-3">
-        <div className="bg-[#1c1633] rounded-2xl p-3 text-xs flex justify-between">
-          <span className={isTrial?'text-green-400':'text-red-400'}>{isTrial?`✅ Trial ${trialDaysLeft()} hari lagi - Chat & Radar GRATIS`:'⚠️ Trial habis - Chat 200 poin'}</span>
-          <span className="text-yellow-400">Saldo hadiah Rp {saldoRp}</span>
-        </div>
-      </div>
-
-      {tab==='dekat' && (
-        <div className="px-4 mt-3">
-          {users.filter(u=>u.id!==user.id).map(u=>(
-            <div key={u.id} className="bg-[#1e1740] rounded-[20px] p-4 mt-3 flex items-center gap-3">
-              <img src={u.foto_url || `https://i.pravatar.cc/150?u=${u.nama}`} className="w-12 h-12 rounded-full"/>
-              <div className="flex-1"><p className="font-bold">{u.nama}</p><p className="text-xs text-zinc-400">REAL • {u.no_wa}</p></div>
-              <div className="flex gap-2">
-                <button onClick={()=>setShowGift(u)} className="bg-yellow-400 text-black px-3 py-2 rounded-full text-xs font-black">Gift Poin</button>
-                <button onClick={()=>handleChat(u)} className="bg-[#8b5cf6] px-4 py-2 rounded-full text-xs font-bold">{isTrial?'Chat FREE':'Chat 200'}</button>
+        {notif && <div className="mx-4 mt-3 bg-green-600 text-white text-xs text-center py-2 rounded-xl">{notif}</div>}
+        {tab === 'dompet' && (
+          <div className="p-4">
+            <div className="bg-zinc-900 rounded-3xl p-6 border border-zinc-700">
+              <p className="text-zinc-400 text-xs">TOTAL SALDO BISA TARIK</p>
+              <p className="text-4xl font-black text-green-400 mt-1">Rp{saldo.toLocaleString('id-ID')}</p>
+              <p className="text-[10px] text-zinc-500 mt-2">SeaBank {SEA_BANK} a.n {NAMA} • {coins} Coins</p>
+              <div className="mt-6 bg-black/50 rounded-2xl p-4 border border-zinc-800">
+                <input type="number" value={wdNominal} onChange={(e) => setWdNominal(Number(e.target.value))} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 mt-1 text-sm" />
+                <button onClick={handleWD} disabled={loading || saldo === 0} className={`w-full mt-4 py-4 rounded-xl font-black text-sm ${saldo > 0 ? 'bg-green-500 text-white' : 'bg-zinc-800 text-zinc-600'}`}>
+                  {loading ? 'MEMPROSES...' : `TARIK Rp${wdNominal.toLocaleString('id-ID')} KE SEABANK 1680`}
+                </button>
+                <p className="text-[9px] text-zinc-600 text-center mt-2">Semua fungsi jalan - WD - Transaksi - Riwayat lancar</p>
               </div>
             </div>
+          </div>
+        )}
+        {tab === 'riwayat' && (
+          <div className="p-4">
+            <h2 className="font-bold mb-4">Riwayat ({riwayat.length})</h2>
+            {riwayat.length === 0 ? <p className="text-zinc-500 text-sm text-center py-10">Belum ada penarikan</p> : riwayat.map(t => (
+              <div key={t.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-3">
+                <p className="text-xs font-bold text-green-400">{t.jenis} • {t.status}</p>
+                <p className="text-lg font-bold">-Rp{t.nominal.toLocaleString('id-ID')}</p>
+                <p className="text-[11px] text-zinc-400">{t.tujuan} • {t.waktu}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex max-w-md mx-auto">
+          {[{id:'dompet', label:'Dompet'},{id:'riwayat', label:'Riwayat'}].map(m => (
+            <button key={m.id} onClick={() => setTab(m.id)} className={`flex-1 py-4 text-xs font-bold ${tab===m.id ? 'text-white border-t-2 border-green-500 bg-zinc-800' : 'text-zinc-500'}`}>{m.label}</button>
           ))}
-          {users.filter(u=>u.id!==user.id).length===0 && <p className="text-center text-zinc-500 mt-10">Belum ada orang. Ajak teman daftar, trial 7 hari gratis.</p>}
         </div>
-      )}
-
-      {tab==='chat' && <div className="p-4 mt-3"><p className="text-zinc-400 text-sm">Chat {isTrial?'FREE trial 7 hari':'200 poin per chat'}</p>{users.filter(u=>u.id!==user.id).map(u=>(<div key={u.id} className="bg-[#1e1740] p-4 rounded-2xl mt-2 flex justify-between"><span>{u.nama}</span><button onClick={()=>handleChat(u)} className="bg-[#8b5cf6] px-4 py-1 rounded-full text-xs">Chat</button></div>))}</div>}
-      {tab==='video' && <div className="p-4 mt-3"><p className="text-zinc-400 text-sm">Video {isTrial?'FREE trial':'500 poin'}</p>{users.filter(u=>u.id!==user.id).map(u=>(<div key={u.id} className="bg-[#1e1740] p-4 rounded-2xl mt-2 flex justify-between"><span>{u.nama}</span><button onClick={()=>handleVideo(u)} className="bg-pink-500 px-4 py-1 rounded-full text-xs">Video</button></div>))}</div>}
-      {tab==='profil' && (
-        <div className="p-4">
-          <div className="bg-[#1e1740] rounded-2xl p-5"><p className="font-bold">{user.nama}</p><p className="text-xs text-zinc-400">{user.no_wa}</p><p className="mt-2 text-sm">{isTrial?`Sisa trial ${trialDaysLeft()} hari - Radar & Chat GRATIS, Gift tetep pake poin`:'Trial habis'}</p><p className="text-yellow-400 mt-2">Poin: {coins} | Saldo hadiah: Rp {saldoRp}</p><button onClick={logout} className="w-full mt-4 bg-red-500 p-3 rounded-xl font-bold">LOGOUT</button></div>
-        </div>
-      )}
-
-      {showTopup && (
-        <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50">
-          <div className="bg-[#1e1740] w-full max-w-md rounded-t-[24px] p-5">
-            <p className="font-black">
+      </div>
+    </div>
+  );
+}
