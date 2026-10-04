@@ -1,0 +1,17 @@
+{
+  "name": "TemanDekat - Local Area",
+  "short_name": "TemanDekat",
+  "description": "Cari teman dekat di Sukoharjo, chat, live, dan dompet digital",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0a1e",
+  "theme_color": "#facc15",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1246/1246351.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
