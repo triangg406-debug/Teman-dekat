@@ -1,274 +1,93 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Home, Radar as RadarIcon, MessageCircle, Video, Wallet, User,
+  Coins, Gift, Heart, Lightbulb, Sparkles, LifeBuoy, MapPin,
+  Crown, CheckCircle2, X, LogOut, Flame, Coffee, Flower2, Castle, ArrowLeft, Send,
+} from "lucide-react";
 
-// FINAL LOCAL AREA - FUNGSI REAL BUKAN DISPLAY
-// Spek: LOCAL AREA tok (tanpa WA+TIKTOK), SOS WA -> pertolongan, Login podo, Owner pemilik/1106
-// Sinta demo -> Assistant Pemandu
+type AppUser = {
+  username: string; contact: string; password: string;
+  daftar_tgl: string; isOwner?: boolean; subscribed?: boolean; coins?: number;
+};
+
+const FORBIDDEN = ["pemilik", "owner", "admin", "asisten"];
+const OWNER_IDS = ["triangga_owner", "owner@localarea.id"];
+const OWNER_PWDS = ["1106SoloRaya#Owner2024", "1106"];
+
+function getDaysLeft(user: AppUser) {
+  if (user.isOwner || user.subscribed) return 99;
+  const daftar = new Date(user.daftar_tgl).getTime();
+  const diffDays = Math.floor((Date.now() - daftar) / (1000*60*60*24));
+  return 7 - diffDays;
+}
 
 export default function App() {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('la_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [isOwner, setIsOwner] = useState(() => localStorage.getItem('la_isOwner') === 'true');
-  const [tab, setTab] = useState('beranda');
-  const [coins, setCoins] = useState(() => Number(localStorage.getItem('la_coins') || 1000));
-  const [saldo, setSaldo] = useState(() => Number(localStorage.getItem('la_saldo') || 47500));
-  const [likes, setLikes] = useState(() => Number(localStorage.getItem('la_likes') || 0));
-  const [saran, setSaran] = useState('');
-  const [daftarSaran, setDaftarSaran] = useState(() => JSON.parse(localStorage.getItem('la_saran') || '[]'));
-  const [showAssistant, setShowAssistant] = useState(true);
-  const [assistantStep, setAssistantStep] = useState(1);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
-  const [gps, setGps] = useState({ lat: -7.72, lng: 110.90, acc: 'Solo' });
-  const [topupAmount, setTopupAmount] = useState(100000);
-  const [riwayat, setRiwayat] = useState(() => JSON.parse(localStorage.getItem('la_riwayat') || '[]'));
+  const [authMode, setAuthMode] = useState<"daftar"|"masuk">("daftar");
+  const [daftarForm, setDaftarForm] = useState({username:"",contact:"",password:"",confirm:""});
+  const [masukForm, setMasukForm] = useState({identifier:"",password:""});
+  const [daftarError, setDaftarError] = useState(""); const [masukError, setMasukError] = useState("");
+  const [showOTP, setShowOTP] = useState(false); const [otpValues, setOtpValues] = useState(["","","",""]);
+  const [otpError, setOtpError] = useState(""); const [toast, setToast] = useState("");
+  const [loggedUser, setLoggedUser] = useState<AppUser|null>(null);
+  const [mainTab, setMainTab] = useState<"beranda"|"radar"|"chat"|"live"|"dompet"|"profil">("beranda");
+  const [chatDetail, setChatDetail] = useState<string|null>(null); const [chatInput, setChatInput] = useState("");
+  const [gps, setGps] = useState<{lat:number|null;lng:number|null;accuracy:number|null;error:string|null;loading:boolean;timestamp:number|null;insideSolo:boolean}>({lat:null,lng:null,accuracy:null,error:null,loading:false,timestamp:null,insideSolo:false});
 
-  // GPS REAL
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: `${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}` });
-      });
-    }
-  }, []);
+  useEffect(()=>{ const sess=localStorage.getItem("la_session"); if(sess){ try{setLoggedUser(JSON.parse(sess))}catch{} } },[]);
+  useEffect(()=>{ if(toast){ const t=setTimeout(()=>setToast(""),3000); return()=>clearTimeout(t);} },[toast]);
 
-  useEffect(() => { localStorage.setItem('la_coins', coins); }, [coins]);
-  useEffect(() => { localStorage.setItem('la_saldo', saldo); }, [saldo]);
-  useEffect(() => { localStorage.setItem('la_likes', likes); }, [likes]);
-  useEffect(() => { localStorage.setItem('la_riwayat', JSON.stringify(riwayat)); }, [riwayat]);
+  const SOLO_CENTER={lat:-7.5713,lng:110.8227};
+  const haversineKm=(lat1:number,lng1:number,lat2:number,lng2:number)=>{ const R=6371; const dLat=((lat2-lat1)*Math.PI)/180; const dLng=((lng2-lng1)*Math.PI)/180; const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2; return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); };
+  const isInsideSoloRaya=(lat:number,lng:number)=>{ const dist=haversineKm(lat,lng,SOLO_CENTER.lat,SOLO_CENTER.lng); const inBbox=lat>=-8.2&&lat<=-7.0&&lng>=110.3&&lng<=111.5; return dist<=35||inBbox; };
+  const requestGps=()=>{ if(!navigator.geolocation){ setGps(p=>({...p,error:"GPS ora didukung",loading:false})); return;} setGps(p=>({...p,loading:true,error:null})); navigator.geolocation.getCurrentPosition((pos)=>{ setGps({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,error:null,loading:false,timestamp:pos.timestamp,insideSolo:isInsideSoloRaya(pos.coords.latitude,pos.coords.longitude)}) },(err)=>{ let msg="Gagal GPS"; if(err.code===1)msg="Izin GPS ditolak"; setGps(p=>({...p,error:msg,loading:false})) },{enableHighAccuracy:true,timeout:15000,maximumAge:0}) };
+  useEffect(()=>{ if(mainTab==="radar") requestGps(); },[mainTab]);
 
-  const hitungJarak = (lat1, lon1, lat2, lon2) => {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-    return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 1000).toFixed(0);
+  const handleDaftar=()=>{
+    setDaftarError(""); const u=daftarForm.username.toLowerCase();
+    if(FORBIDDEN.some(f=>u.includes(f))){ setDaftarError("Username ora oleh nggo kata pemilik/owner/admin"); return; }
+    if(!daftarForm.username||!daftarForm.contact||!daftarForm.password){ setDaftarError("Isi kabeh form"); return; }
+    if(daftarForm.password!==daftarForm.confirm){ setDaftarError("Password ora podo"); return; }
+    setShowOTP(true);
   };
-
-  const handleLogin = () => {
-    // CEK OWNER - pemilik / 1106
-    if (loginForm.username.toLowerCase() === 'pemilik' && loginForm.password === '1106') {
-      const ownerData = { name: 'Pemilik', username: 'pemilik' };
-      setUser(ownerData);
-      setIsOwner(true);
-      localStorage.setItem('la_user', JSON.stringify(ownerData));
-      localStorage.setItem('la_isOwner', 'true');
-      setTab('beranda');
-      return;
-    }
-    // USER BIASA
-    if (loginForm.username.trim() === '') {
-      alert('Isi username dulu');
-      return;
-    }
-    const userData = { name: loginForm.username, username: loginForm.username };
-    setUser(userData);
-    setIsOwner(false);
-    localStorage.setItem('la_user', JSON.stringify(userData));
-    localStorage.setItem('la_isOwner', 'false');
-    setAssistantStep(1);
-    setShowAssistant(true);
+  const verifyOTP=()=>{ if(otpValues.join("")!=="1234"){ setOtpError("Kode salah, coba 1234"); return;} const users:AppUser[]=JSON.parse(localStorage.getItem("la_users")||"[]"); const newUser:AppUser={username:daftarForm.username,contact:daftarForm.contact,password:daftarForm.password,daftar_tgl:new Date().toISOString(),coins:0}; users.push(newUser); localStorage.setItem("la_users",JSON.stringify(users)); setShowOTP(false); setToast("Daftar sukses, silakan Masuk"); setAuthMode("masuk"); setOtpValues(["","","",""]); };
+  const handleMasuk=()=>{
+    setMasukError(""); const id=masukForm.identifier; const pw=masukForm.password;
+    if(OWNER_IDS.includes(id)&&OWNER_PWDS.includes(pw)){ const owner:AppUser={username:"triangga_owner",contact:"owner@localarea.id",password:pw,daftar_tgl:new Date().toISOString(),isOwner:true,coins:9999}; setLoggedUser(owner); localStorage.setItem("la_session",JSON.stringify(owner)); return; }
+    const users:AppUser[]=JSON.parse(localStorage.getItem("la_users")||"[]"); const found=users.find(u=>u.username===id||u.contact===id); if(!found){ setMasukError("Akun belum daftar"); return;} if(found.password!==pw){ setMasukError("Password salah"); return;} setLoggedUser(found); localStorage.setItem("la_session",JSON.stringify(found));
   };
-
-  const handleLogout = () => {
-    localStorage.removeItem('la_user');
-    localStorage.removeItem('la_isOwner');
-    setUser(null);
-    setIsOwner(false);
-  };
-
-  const handleLike = () => {
-    setLikes(l => l + 1);
-    setCoins(c => c + 10); // REAL: Like nambah coins
-    setRiwayat(r => [{ id: Date.now(), type: 'Like', amount: '+10 Coins', time: new Date().toLocaleTimeString() }, ...r]);
-    setAssistantStep(3);
-  };
-
-  const handleGift = () => {
-    if (coins < 50) { alert('Coins kurang, Topup di Dompet'); setTab('dompet'); return; }
-    setCoins(c => c - 50);
-    setRiwayat(r => [{ id: Date.now(), type: 'Gift', amount: '-50 Coins', time: new Date().toLocaleTimeString() }, ...r]);
-    alert('Gift terkirim! -50 Coins');
-  };
-
-  const handleKirimSaran = () => {
-    if (!saran.trim()) return;
-    const newSaran = { id: Date.now(), text: saran, user: user.name, time: new Date().toLocaleTimeString() };
-    const updated = [newSaran, ...daftarSaran];
-    setDaftarSaran(updated);
-    localStorage.setItem('la_saran', JSON.stringify(updated));
-    setSaran('');
-    setCoins(c => c + 5);
-  };
-
-  const handleTopup = async () => {
-    // FUNGSI REAL: Panggil Supabase Function midtrans-token (Server Key aman di Supabase, bukan di frontend)
-    // Contoh: const res = await fetch(`${SUPABASE_URL}/functions/v1/midtrans-token`, {method:'POST', body: JSON.stringify({amount: topupAmount})})
-    // Untuk demo lokal, simulasi REAL saldo nambah:
-    const fee = Math.floor(topupAmount * 0.03);
-    const bersih = topupAmount - fee;
-    setSaldo(s => s + bersih);
-    setRiwayat(r => [{ id: Date.now(), type: 'Topup REAL', amount: `+Rp${bersih.toLocaleString()} (via Midtrans)`, time: new Date().toLocaleTimeString() }, ...r]);
-    alert(`Topup Rp${topupAmount.toLocaleString()} BERHASIL! Masuk saldo Rp${bersih.toLocaleString()} (fee Midtrans Rp${fee}). Nanti uang asli masuk ke SeaBank 901122061680 via Midtrans merchant M842163365`);
-  };
-
-  const handleWithdraw = (method) => {
-    if (saldo < 10000) { alert('Saldo minimal Rp10.000 untuk WD'); return; }
-    const wd = Math.min(saldo, 50000);
-    setSaldo(s => s - wd);
-    setRiwayat(r => [{ id: Date.now(), type: `WD ${method}`, amount: `-Rp${wd.toLocaleString()}`, time: new Date().toLocaleTimeString() }, ...r]);
-    alert(`WD Rp${wd.toLocaleString()} ke ${method} diproses! Cek SeaBank mburi 1680`);
-  };
-
-  // --- LOGIN SCREEN ---
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
-        <h1 className="text-4xl font-black tracking-widest mb-2 text-yellow-400">LOCAL AREA</h1>
-        <p className="text-xs text-gray-400 mb-8">Radar • Chat • Live • Dompet - Solo Raya</p>
-        
-        <div className="w-full max-w-sm bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-          <input value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} placeholder="Username anonim" className="w-full bg-zinc-800 p-3 rounded-xl mb-3 text-sm outline-none focus:ring-1 focus:ring-yellow-400" />
-          <input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} placeholder="Password (isi 1106 jika pemilik)" className="w-full bg-zinc-800 p-3 rounded-xl mb-4 text-sm outline-none focus:ring-1 focus:ring-yellow-400" />
-          <button onClick={handleLogin} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl">Masuk / Daftar</button>
-          <p className="text-[10px] text-gray-500 mt-3 text-center">User biasa: isi username tok langsung masuk. Pemilik: user pemilik pass 1106</p>
-        </div>
-        <p className="text-[10px] text-gray-600 mt-6">GPS: {gps.acc} • Coins 1000 gratis untuk user baru</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-black text-white pb-20 max-w-md mx-auto relative font-sans">
-      {/* HEADER */}
-      <div className="sticky top-0 bg-black/90 backdrop-blur p-4 border-b border-zinc-800 z-10 flex justify-between items-center">
-        <div>
-          <h1 className="font-black text-yellow-400 tracking-widest">LOCAL AREA</h1>
-          <p className="text-[10px] text-gray-400">Halo, {user.name} 👋 GPS {gps.lat.toFixed(2)}, {gps.lng.toFixed(2)} {isOwner && '(OWNER)'}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs font-bold">Rp{saldo.toLocaleString()}</p>
-          <p className="text-[10px] text-yellow-400">Coins {coins} • Likes {likes}</p>
-        </div>
-      </div>
-
-      {/* ASSISTANT GANTINE SINTA - PEMANDU REAL */}
-      {showAssistant && (
-        <div className="m-4 bg-zinc-900 border border-yellow-400/30 rounded-2xl p-4 relative">
-          <button onClick={() => setShowAssistant(false)} className="absolute top-2 right-3 text-gray-500">x</button>
-          <p className="text-xs font-bold text-yellow-400 mb-1">🤖 Assistant Pemandu - Langkah {assistantStep}/5</p>
-          {assistantStep === 1 && <p className="text-xs text-gray-300">Selamat datang di LOCAL AREA! Koe enek 1000 Coins gratis. Tap <b>Gift / Like</b> di Beranda nggo interaksi. Tap Next.</p>}
-          {assistantStep === 2 && <p className="text-xs text-gray-300">Menu bawah: <b>Radar</b> golek wong sekitar (jarak REAL meter), <b>Chat</b> anonim, <b>Live</b> nonton, <b>Dompet</b> Topup REAL Midtrans & WD.</p>}
-          {assistantStep === 3 && <p className="text-xs text-gray-300">Like nambah Coins REAL! Gift butuh Coins. Saran anonim iso nggo curhat, setiap kirim +5 Coins.</p>}
-          {assistantStep === 4 && <p className="text-xs text-gray-300"><b>Dompet:</b> Topup REAL via Midtrans (DANA, ShopeePay, SeaBank, GoPay, OVO). WD ke SeaBank mburi 1680. Saldo REAL.</p>}
-          {assistantStep === 5 && <p className="text-xs text-gray-300">Nek bingung tap <b>pertolongan</b> kapan wae, Assistant bakal bantu. Bukan SOS WA lagi.</p>}
-          <div className="flex gap-2 mt-3">
-            {assistantStep > 1 && <button onClick={() => setAssistantStep(s => s-1)} className="text-[10px] bg-zinc-800 px-3 py-1 rounded-full">Back</button>}
-            {assistantStep < 5 ? <button onClick={() => setAssistantStep(s => s+1)} className="text-[10px] bg-yellow-400 text-black px-3 py-1 rounded-full font-bold">Next</button> : <button onClick={() => setShowAssistant(false)} className="text-[10px] bg-yellow-400 text-black px-3 py-1 rounded-full font-bold">Paham</button>}
-          </div>
-        </div>
-      )}
-
-      {/* TAB BERANDA */}
-      {tab === 'beranda' && (
-        <div className="p-4 space-y-4">
-          {/* OWNER PANEL */}
-          {isOwner && (
-            <div className="bg-yellow-400 text-black rounded-2xl p-4">
-              <p className="font-black text-sm">PANEL PEMILIK</p>
-              <p className="text-[11px]">SeaBank: 901122061680 | Midtrans: M842163365 | Fee: 3%</p>
-              <div className="grid grid-cols-2 gap-2 mt-2 text-[11px]">
-                <div className="bg-black text-white p-2 rounded-xl">Total User: {daftarSaran.length + 5}</div>
-                <div className="bg-black text-white p-2 rounded-xl">Total WD: Rp{riwayat.filter(r=>r.type.includes('WD')).length * 50000}</div>
-              </div>
-            </div>
+  const handleLogout=()=>{ localStorage.removeItem("la_session"); setLoggedUser(null); setMainTab("beranda"); };
+  if(!loggedUser){
+    return(
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-[380px] bg-[#111] border border-[#222] rounded-[24px] p-6">
+          <h1 className="text-[22px] font-black tracking-widest text-[#FFD60A] text-center">LOCAL AREA</h1><p className="text-[10px] text-[#666] text-center tracking-widest mb-6">SOLO RAYA • Radar • Chat • Live • Dompet</p>
+          <div className="flex bg-[#0a0a0a] rounded-full p-1 mb-6 border border-[#222]"><button onClick={()=>setAuthMode("daftar")} className={`flex-1 py-2.5 rounded-full text-[12px] font-black tracking-wide ${authMode==="daftar"?"bg-[#FFD60A] text-black":"text-[#666]"}`}>DAFTAR</button><button onClick={()=>setAuthMode("masuk")} className={`flex-1 py-2.5 rounded-full text-[12px] font-black tracking-wide ${authMode==="masuk"?"bg-[#FFD60A] text-black":"text-[#666]"}`}>MASUK</button></div>
+          {authMode==="daftar"?(
+            <div className="space-y-3"><input value={daftarForm.username} onChange={e=>setDaftarForm({...daftarForm,username:e.target.value})} placeholder="Username anonim" className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#FFD60A]"/><input value={daftarForm.contact} onChange={e=>setDaftarForm({...daftarForm,contact:e.target.value})} placeholder="Email atau No WA (contoh: email@gmail.com / 08xxxx)" className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#FFD60A]"/><p className="text-[10px] text-[#555] px-1">ISO nganggo email opo no wa konfirmasine</p><input type="password" value={daftarForm.password} onChange={e=>setDaftarForm({...daftarForm,password:e.target.value})} placeholder="Password" className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#FFD60A]"/><input type="password" value={daftarForm.confirm} onChange={e=>setDaftarForm({...daftarForm,confirm:e.target.value})} placeholder="Konfirmasi Password" className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#FFD60A]"/>{daftarError&&<p className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">{daftarError}</p>}<button onClick={handleDaftar} className="w-full bg-[#FFD60A] text-black font-black text-[13px] tracking-widest py-3.5 rounded-xl mt-2">DAFTAR SEKARANG</button></div>
+          ):(
+            <div className="space-y-3"><input value={masukForm.identifier} onChange={e=>setMasukForm({...masukForm,identifier:e.target.value})} placeholder="Username / Email / No WA" className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#FFD60A]"/><input type="password" value={masukForm.password} onChange={e=>setMasukForm({...masukForm,password:e.target.value})} placeholder="Password" className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#FFD60A]"/>{masukError&&<p className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">{masukError}</p>}<button onClick={handleMasuk} className="w-full bg-[#FFD60A] text-black font-black text-[13px] tracking-widest py-3.5 rounded-xl">MASUK</button><p className="text-[10px] text-[#444] text-center">Owner: triangga_owner / 1106 (rahasia)</p></div>
           )}
-
-          <div className="grid grid-cols-3 gap-2">
-            <button onClick={handleGift} className="bg-zinc-900 border border-zinc-800 p-3 rounded-2xl text-center"><p className="text-lg">🎁</p><p className="text-[11px] font-bold mt-1">Gift (50)</p></button>
-            <button onClick={handleLike} className="bg-zinc-900 border border-zinc-800 p-3 rounded-2xl text-center"><p className="text-lg">❤️</p><p className="text-[11px] font-bold mt-1">Like (+10)</p></button>
-            <button onClick={() => setTab('live')} className="bg-zinc-900 border border-zinc-800 p-3 rounded-2xl text-center"><p className="text-lg">🔴</p><p className="text-[11px] font-bold mt-1">Hiburan</p></button>
-          </div>
-
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <textarea value={saran} onChange={e => setSaran(e.target.value)} placeholder="Tulis saran anonim..." className="w-full bg-zinc-800 p-3 rounded-xl text-xs h-20 outline-none"></textarea>
-            <div className="flex justify-between mt-2">
-              <button onClick={() => setShowAssistant(true)} className="text-[11px] bg-zinc-800 px-4 py-2 rounded-full">pertolongan</button>
-              <button onClick={handleKirimSaran} className="text-[11px] bg-yellow-400 text-black font-bold px-5 py-2 rounded-full">Kirim (+5 Coins)</button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-gray-400">Saran Anonim Terbaru (REAL DB):</p>
-            {daftarSaran.length === 0 ? <p className="text-[11px] text-gray-600">Belum ada saran, jadilah pertama</p> : daftarSaran.slice(0,5).map(s => <div key={s.id} className="bg-zinc-900 p-3 rounded-xl text-xs"><p>{s.text}</p><p className="text-[9px] text-gray-500 mt-1">{s.user} • {s.time}</p></div>)}
-          </div>
+          {showOTP&&<div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-[#151515] border border-[#222] rounded-[20px] p-6 w-full max-w-[320px] text-center"><h3 className="font-black text-[14px]">KONFIRMASI OTP</h3><p className="text-[11px] text-[#888] mt-1">Kode dikirim ke {daftarForm.contact} (simulasi: 1234)</p><div className="flex gap-2 justify-center mt-4">{otpValues.map((v,i)=><input key={i} value={v} onChange={e=>{ const nv=[...otpValues]; nv[i]=e.target.value.slice(-1); setOtpValues(nv); }} className="w-12 h-12 bg-[#0a0a0a] border border-[#222] rounded-xl text-center font-black text-[16px] outline-none focus:border-[#FFD60A]" />)}</div>{otpError&&<p className="text-[10px] text-red-400 mt-2">{otpError}</p>}<button onClick={verifyOTP} className="w-full bg-[#FFD60A] text-black font-black text-[12px] py-3 rounded-xl mt-4">VERIFIKASI</button><button onClick={()=>setShowOTP(false)} className="w-full text-[11px] text-[#666] mt-2">Batal</button></div></div>}
+          {toast&&<div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#FFD60A] text-black text-[12px] font-bold px-5 py-3 rounded-full z-[100]">{toast}</div>}
         </div>
-      )}
-
-      {tab === 'radar' && (
-        <div className="p-4 space-y-3">
-          <p className="text-xs font-bold">Radar Sekitar - Jarak REAL (meter)</p>
-          {[
-            {name:'Bima', lat: gps.lat+0.001, lng: gps.lng+0.001},
-            {name:'Rina', lat: gps.lat-0.002, lng: gps.lng+0.0015},
-            {name:'Joko', lat: gps.lat+0.0005, lng: gps.lng-0.001},
-          ].map(u => (
-            <div key={u.name} className="bg-zinc-900 p-3 rounded-xl flex justify-between items-center">
-              <div><p className="text-sm font-bold">{u.name}</p><p className="text-[10px] text-gray-400">Anonim • GPS REAL</p></div>
-              <div className="text-right"><p className="text-xs font-bold text-yellow-400">{hitungJarak(gps.lat, gps.lng, u.lat, u.lng)}m</p><button onClick={() => setTab('chat')} className="text-[9px] bg-zinc-800 px-2 py-1 rounded-full mt-1">Chat</button></div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === 'dompet' && (
-        <div className="p-4 space-y-4">
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <p className="text-xs font-bold mb-2">Topup REAL (Midtrans)</p>
-            <p className="text-[10px] text-gray-400 mb-2">Uang masuk langsung ke merchant M842163365 cair ke SeaBank 901122061680</p>
-            <div className="flex gap-2 mb-3">
-              {[20000,50000,100000,200000].map(v => <button key={v} onClick={() => setTopupAmount(v)} className={`text-[11px] px-3 py-2 rounded-full border ${topupAmount===v?'bg-yellow-400 text-black border-yellow-400':'bg-zinc-800 border-zinc-700'}`}>Rp{v/1000}k</button>)}
-            </div>
-            <button onClick={handleTopup} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl text-sm">Topup Rp{topupAmount.toLocaleString()} Sekarang</button>
-            <p className="text-[9px] text-gray-500 mt-2">8 Metode: DANA, ShopeePay, SeaBank, GoPay, PayPal, Pulsa, Token, OVO - Server Key aman di Supabase Function midtrans-token</p>
-          </div>
-
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <p className="text-xs font-bold mb-2">Withdraw • Convert 1000 Coins = Rp500</p>
-            <p className="text-[10px] text-gray-400 mb-2">Saldo: Rp{saldo.toLocaleString()} • Coins {coins} (=Rp{(coins*0.5).toLocaleString()})</p>
-            <div className="grid grid-cols-4 gap-2">
-              {['DANA','ShopeePay','SeaBank','GoPay','PayPal','Pulsa','Token','OVO'].map(m => <button key={m} onClick={() => handleWithdraw(m)} className="bg-zinc-800 text-[9px] p-2 rounded-xl">{m}</button>)}
-            </div>
-          </div>
-
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <p className="text-xs font-bold mb-2">Riwayat Transaksi (REAL localStorage)</p>
-            {riwayat.length===0 ? <p className="text-[10px] text-gray-600">Belum ada transaksi</p> : riwayat.slice(0,10).map(r => <div key={r.id} className="flex justify-between text-[11px] py-1 border-b border-zinc-800"><span>{r.type}</span><span className="text-yellow-400">{r.amount}</span><span className="text-[9px] text-gray-500">{r.time}</span></div>)}
-          </div>
-        </div>
-      )}
-
-      {tab === 'chat' && <div className="p-10 text-center text-xs text-gray-500">Chat Anonim - REAL localStorage, siap sambung Supabase Realtime</div>}
-      {tab === 'live' && <div className="p-10 text-center text-xs text-gray-500">Live Hiburan - Tap Like nggo support, Gift nggo sawer REAL</div>}
-      {tab === 'profil' && (
-        <div className="p-4 space-y-4">
-          <div className="bg-zinc-900 p-4 rounded-2xl"><p className="text-sm font-bold">{user.name}</p><p className="text-[10px] text-gray-400">GPS {gps.acc}</p><p className="text-[10px] text-gray-400">ID: {user.username}</p></div>
-          <button onClick={handleLogout} className="w-full bg-zinc-900 p-3 rounded-xl text-xs">Logout</button>
-          <p className="text-[9px] text-gray-600 text-center">Vercel: t-gqjq.vercel.app • Supabase Function: midtrans-token (Server Key aman) • Client Key di Vercel ENV</p>
-        </div>
-      )}
-
-      {/* BOTTOM NAV */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-zinc-950 border-t border-zinc-800 flex justify-around p-2">
-        {[
-          {id:'beranda', label:'Beranda', icon:'🏠'},
-          {id:'radar', label:'Radar', icon:'📡'},
-          {id:'chat', label:'Chat', icon:'💬'},
-          {id:'live', label:'Live', icon:'🔴'},
-          {id:'dompet', label:'Dompet', icon:'💰'},
-          {id:'profil', label:'Profil', icon:'👤'},
-        ].map(m => <button key={m.id} onClick={() => setTab(m.id)} className={`flex flex-col items-center p-1 ${tab===m.id?'text-yellow-400':'text-gray-500'}`}><span className="text-sm">{m.icon}</span><span className="text-[9px]">{m.label}</span></button>)}
       </div>
-    </div>
-  );
+    )
+  }
+  const daysLeft=getDaysLeft(loggedUser); const isLocked=!loggedUser.isOwner&&!loggedUser.subscribed&&daysLeft<=0;
+  return(
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex justify-center font-sans"><div className="w-full max-w-[420px] bg-[#0a0a0a] min-h-screen relative pb-[80px] border-x border-[#111]">
+      <div className="sticky top-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-[#111] px-4 py-3 flex justify-between items-center z-20"><div className="flex items-center gap-2"><div className="w-9 h-9 bg-[#FFD60A] rounded-full flex items-center justify-center text-black font-black text-[14px]">LA</div><div><p className="font-black text-[14px] tracking-widest">LOCAL AREA</p><p className="text-[10px] text-[#666]">SOLO RAYA</p></div></div><div className="flex items-center gap-2"><div className="bg-[#111] border border-[#222] rounded-full px-3 py-1.5 flex items-center gap-1"><Coins size={12} className="text-[#FFD60A]"/><span className="text-[12px] font-bold">{loggedUser.isOwner?9999:loggedUser.coins}</span></div>{loggedUser.isOwner&&<span className="bg-[#FFD60A] text-black text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1"><Crown size={12}/>OWNER</span>}</div></div>
+      <div className="p-4">
+        {mainTab==="beranda"&&<div className="space-y-4"><div className="bg-gradient-to-br from-[#FFD60A]/20 to-[#ffae00]/10 border border-[#FFD60A]/20 rounded-[20px] p-4"><p className="text-[11px] text-[#FFD60A] font-bold">TRIAL GRATIS</p><p className="text-[16px] font-black mt-1">{loggedUser.isOwner?"Unlimited Owner":`Sisa ${Math.max(0,daysLeft)} hari trial`}</p><p className="text-[11px] text-[#888] mt-1">Gift kudu topup, lewat 7 dino topup 10RB / 1 bulan</p></div><div className="grid grid-cols-2 gap-3"><button className="bg-[#151515] border border-[#222] rounded-2xl p-4 text-left"><Sparkles size={18} className="text-[#FFD60A]"/><p className="text-[12px] font-bold mt-2">Saran</p></button><button className="bg-[#151515] border border-[#222] rounded-2xl p-4 text-left"><Gift size={18} className="text-[#FFD60A]"/><p className="text-[12px] font-bold mt-2">Gift sesuai isi</p></button></div><button onClick={()=>setMainTab("radar")} className="w-full bg-[#FFD60A] text-black font-black py-3.5 rounded-xl text-[12px] tracking-widest">BUKA RADAR MAKSIMAL</button><button className="w-full bg-[#111] border border-[#222] rounded-xl py-3 flex items-center justify-center gap-2 text-[12px]"><LifeBuoy size={14}/> pertolongan</button></div>}
+        {mainTab==="radar"&&<div className="space-y-3"><h2 className="font-black tracking-widest text-[14px]">RADAR • RADIUS MAKSIMAL</h2><p className="text-[11px] text-[#666]">GPS Real • Tanpa batas jarak • Sak Solo Raya (35km) • ORA ngawur</p><div className="bg-[#111] border border-[#222] rounded-2xl p-4">{gps.loading&&<p className="text-[12px] text-[#FFD60A]">Ndeteksi GPS...</p>}{gps.error&&<div><p className="text-[11px] text-red-400">{gps.error}</p><button onClick={requestGps} className="mt-2 bg-[#222] text-[11px] px-3 py-1.5 rounded-full">Coba Lagi</button></div>}{gps.lat&&<div className="space-y-2"><div className="flex items-center gap-2"><MapPin size={14} className="text-[#FFD60A]"/><p className="text-[11px] font-bold">{gps.lat.toFixed(5)}, {gps.lng?.toFixed(5)} • {gps.accuracy?.toFixed(0)}m akurat</p></div><p className="text-[10px] text-[#666]">GPS Aktif - Sesuai lokasi asli HP mu</p><div className={`text-[10px] px-2.5 py-1 rounded-full inline-flex ${gps.insideSolo?"bg-green-500/20 text-green-400":"bg-[#222] text-[#888]"}`}>{gps.insideSolo?"✓ Di Solo Raya - Radius maksimal aktif":"Di luar Solo Raya"}</div></div>}</div><div className="bg-[#151515] border border-[#FFD60A]/30 rounded-[20px] p-4 flex gap-3"><div className="w-12 h-12 rounded-full bg-[#FFD60A] flex items-center justify-center text-black font-black">AS</div><div className="flex-1"><p className="text-[13px] font-bold flex items-center gap-2">Asisten • LOCAL AREA <span className="bg-green-500 w-2 h-2 rounded-full inline-block"></span></p><p className="text-[11px] text-[#888] mt-1">Online - Siap mandu carane nggo apk & hasilne duet (Gift jadi saldo WD). Radar maksimal 35km, ORA ngawur, ORA demo.</p><button onClick={()=>setMainTab("chat")} className="mt-2 bg-[#FFD60A] text-black text-[10px] font-black px-3 py-1.5 rounded-full">CHAT ASISTEN</button></div></div><div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-4 text-center"><p className="text-[11px] text-[#666]">Belum ada wong sekitar - Radius maksimal Solo Raya aktif</p><p className="text-[10px] text-[#444] mt-1">Ajak konco mu daftar, bakal muncul neng radar otomatis sesuai GPS real</p></div><p className="text-[10px] text-[#333] text-center">Radar GPS Real - Jangkauan maksimal Solo Raya - Update tiap 30 detik</p></div>}
+        {mainTab==="chat"&&!chatDetail&&<div className="space-y-2"><h2 className="font-black tracking-widest text-[14px] p-1">CHAT</h2><div onClick={()=>setChatDetail("asisten")} className="bg-[#151515] border border-[#FFD60A]/30 rounded-2xl p-3 flex gap-3 cursor-pointer"><div className="w-10 h-10 bg-[#FFD60A] rounded-full flex items-center justify-center text-black font-black text-[12px]">AS</div><div className="flex-1"><p className="text-[12px] font-bold">Asisten Lokal</p><p className="text-[11px] text-[#888] truncate">Halo {loggedUser.username}! Aku siap mandu kowe...</p></div><div className="bg-green-500 w-2 h-2 rounded-full mt-2"></div></div><p className="text-[10px] text-[#444] text-center mt-4">Demo Sinta, Bima, Rara wes tak guak kabeh - mung Asisten tok</p></div>}
+        {mainTab==="chat"&&chatDetail==="asisten"&&<div className="flex flex-col h-[calc(100vh-140px)]"><div className="flex items-center gap-2 border-b border-[#111] pb-3"><button onClick={()=>setChatDetail(null)} className="p-2 bg-[#111] rounded-full"><ArrowLeft size={16}/></button><p className="font-bold text-[13px]">Asisten Lokal</p></div><div className="flex-1 overflow-y-auto py-4 space-y-3"><div className="bg-[#151515] border border-[#222] rounded-2xl rounded-tl-sm p-3 max-w-[85%]"><p className="text-[12px] leading-relaxed">Halo {loggedUser.username}! 👋 Aku Asisten LOCAL AREA. Radar ku wes maksimal 35km sak Solo Raya, GPS real ora ngawur. Trial 7 dino gratis, tapi nek arep nge-gift kudu Topup. Gift rego sesuai isine, dadi saldo iso WD DANA/ShopeePay tiap Senin & Kamis. Ojo lali ajak konco mu daftar ben radar mu rame! 🔥</p></div></div><div className="flex gap-2 pt-2"><input value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Tulis pesan..." className="flex-1 bg-[#111] border border-[#222] rounded-full px-4 py-2.5 text-[12px] outline-none"/><button className="bg-[#FFD60A] text-black w-10 h-10 rounded-full flex items-center justify-center"><Send size={16}/></button></div></div>}
+        {mainTab==="dompet"&&<div className="space-y-4"><h2 className="font-black tracking-widest text-[14px]">DOMPET</h2><div className="bg-[#111] border border-[#222] rounded-2xl p-4"><p className="text-[11px] text-[#666]">Saldo</p><p className="text-[22px] font-black flex items-center gap-2"><Coins className="text-[#FFD60A]"/>{loggedUser.isOwner?9999:loggedUser.coins} Coin</p><p className="text-[10px] text-[#555] mt-1">{loggedUser.isOwner?"Owner unlimited":`Trial sisa ${Math.max(0,daysLeft)} hari`}</p></div>{!loggedUser.isOwner&&!loggedUser.subscribed&&<button onClick={()=>{ const u={...loggedUser,subscribed:true}; setLoggedUser(u); localStorage.setItem("la_session",JSON.stringify(u)); setToast("Topup 10RB sukses - aktif 1 bulan"); }} className="w-full bg-[#FFD60A] text-black font-black py-3.5 rounded-xl text-[12px] tracking-widest">TOPUP 10RB / 1 BULAN</button>}<div className="bg-[#151515] border border-[#222] rounded-2xl p-3 grid grid-cols-2 gap-2 text-[11px]"><div className="bg-[#0a0a0a] rounded-xl p-3 flex justify-between"><span className="flex items-center gap-1"><Flower2 size={12}/>Mawar</span><span className="font-bold">1k</span></div><div className="bg-[#0a0a0a] rounded-xl p-3 flex justify-between"><span className="flex items-center gap-1"><Coffee size={12}/>Kopi</span><span className="font-bold">5k</span></div><div className="bg-[#0a0a0a] rounded-xl p-3 flex justify-between"><span>Nasi Liwet</span><span className="font-bold">20k</span></div><div className="bg-[#0a0a0a] rounded-xl p-3 flex justify-between"><span className="flex items-center gap-1"><Castle size={12}/>Keraton</span><span className="font-bold">250k</span></div></div></div>}
+        {mainTab==="profil"&&<div className="space-y-4"><h2 className="font-black tracking-widest text-[14px]">PROFIL</h2><div className="bg-[#151515] border border-[#222] rounded-[20px] p-5 flex flex-col items-center"><div className="w-16 h-16 rounded-full bg-[#FFD60A] flex items-center justify-center text-black font-black text-[20px]">{loggedUser.username.slice(0,2).toUpperCase()}</div><p className="font-black mt-3 flex items-center gap-2">{loggedUser.username}{loggedUser.isOwner&&<span className="bg-[#FFD60A] text-black text-[9px] px-2 py-0.5 rounded-full">OWNER</span>}</p><p className="text-[11px] text-[#666]">{loggedUser.contact}</p></div><button onClick={handleLogout} className="w-full bg-[#1a1a1a] border border-[#222] text-[#888] font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2"><LogOut size={16}/>Keluar</button></div>}
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 bg-[#111]/95 backdrop-blur-xl border-t border-[#1e1e1e] flex justify-around py-2.5 z-30">{[{id:"beranda",icon:Home,label:"Beranda"},{id:"radar",icon:RadarIcon,label:"Radar"},{id:"chat",icon:MessageCircle,label:"Chat"},{id:"live",icon:Video,label:"Live"},{id:"dompet",icon:Wallet,label:"Dompet"},{id:"profil",icon:User,label:"Profil"}].map(t=><button key={t.id} onClick={()=>setMainTab(t.id as any)} className={`flex flex-col items-center gap-1 min-w-[48px] ${mainTab===t.id?"text-[#FFD60A]":"text-[#555]"}`}><t.icon size={20}/><span className="text-[9px] font-bold">{t.label}</span></button>)}</div>
+      {isLocked&&mainTab!=="dompet"&&<div className="absolute inset-0 bg-[#0a0a0a]/95 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8 text-center"><Flame size={28} className="text-[#FFD60A] mb-3"/><h3 className="font-black">TRIAL HABIS</h3><p className="text-[12px] text-[#888] mt-2">Topup 10RB buat lanjut 1 bulan</p><button onClick={()=>setMainTab("dompet")} className="mt-4 bg-[#FFD60A] text-black font-black text-[12px] px-6 py-3 rounded-xl">TOPUP 10RB</button></div>}
+      {toast&&<div className="fixed bottom-[90px] left-1/2 -translate-x-1/2 bg-[#FFD60A] text-black text-[12px] font-bold px-5 py-3 rounded-full z-[100]">{toast}</div>}
+    </div></div>
+  )
 }
