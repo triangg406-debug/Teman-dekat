@@ -1,256 +1,121 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-// SUPABASE CLIENT - ganti nganggo punyamu proyek Teman-dekat
-// import { supabase } from './supabaseClient'
-// Untuk sementara pake dummy ben ora error pas build
-const supabase = {
-  from: () => ({ select: async () => ({ data: [] }), insert: async () => ({}), update: async () => ({}) }),
-  functions: { invoke: async () => ({}) }
-};
+const OWNER_NAME = 'triangga';
+const OWNER_EMAIL = 'triangga406@gmail.com';
 
 export default function App() {
-  const [page, setPage] = useState('auth'); // auth, user, owner
-  const [mode, setMode] = useState('user'); // user, owner
-  const [tab, setTab] = useState('dekat');
-  const [tapCount, setTapCount] = useState(0);
-  const [showOwnerLogin, setShowOwnerLogin] = useState(false);
-  const [pin, setPin] = useState('');
-  const [coins, setCoins] = useState(1000);
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('td_user')||'null'));
+  const [role, setRole] = useState(localStorage.getItem('td_role')||null);
+  const [view, setView] = useState(user? (localStorage.getItem('td_role')==='OWNER'?'owner':'radar') : 'login');
+  // DEMO DI GUWAK - KOSONGAN NUNGGU USER REAL
+  const [users, setUsers] = useState([]);
   const [saldo, setSaldo] = useState(0);
-  const [saran, setSaran] = useState('');
-  const [users, setUsers] = useState([
-    { id: 1, nama: 'Sari - 200m', lokasi: 'Solo', coins: 500 },
-    { id: 2, nama: 'Budi - 450m', lokasi: 'Kartasura', coins: 1200 },
-    { id: 3, nama: 'Rina - 800m', lokasi: 'Sukoharjo', coins: 300 },
-  ]);
-  const [editUser, setEditUser] = useState(null);
+  const [transaksi, setTransaksi] = useState([]);
+  const [chats, setChats] = useState({});
+  const [target, setTarget] = useState(null);
+  const [inputChat, setInputChat] = useState('');
+  const [radius, setRadius] = useState(500);
+  const [sos, setSos] = useState([]);
+  const [live, setLive] = useState([]);
+  const [asistenStep, setAsistenStep] = useState(0);
 
-  // Trik login pemilik rahasia - tap logo 5x
-  const handleLogoTap = () => {
-    const newCount = tapCount + 1;
-    setTapCount(newCount);
-    if (newCount >= 5) {
-      setShowOwnerLogin(true);
-      setTapCount(0);
-    }
-    setTimeout(() => setTapCount(0), 3000);
-  };
+  const asistenTexts = [
+    "Halo bro! Aktifke GPS disek ben radar iso muter.",
+    "Saiki radar kosong mergo urung enek user real. Undang koncomu daftar bro!",
+    "Nek enek wong daftar, langsung ketok jarak meter e neng radar.",
+    "Chat real, gift real, dompet real - kabeh mlebu Supabase mu.",
+    "Top Up 50rb syarat Live 10 orang, duite real iso di-WD ke DANA/SeaBank."
+  ];
 
-  const handleOwnerLogin = () => {
-    // PIN rahasia - ganti sesuai punyamu, ojo di-share
-    if (pin === '1106') {
-      setMode('owner');
-      setPage('owner');
-      setCoins(999999);
-      setShowOwnerLogin(false);
-      setPin('');
-    } else {
-      alert('PIN salah');
-    }
-  };
+  const isOwner = (n,e) => n.toLowerCase()===OWNER_NAME || e.toLowerCase()===OWNER_EMAIL;
 
-  const handleDaftar = () => {
-    setMode('user');
-    setPage('user');
-    setTab('dekat');
-  };
-
-  const handleGift = (userId) => {
-    if (mode === 'owner') {
-      alert(`Pemilik nge-gift user ${userId} - GRATIS (Mode Dewa)`);
-      // supabase.from('transactions').insert({ type: 'gift', amount: 100, from: 'owner', to: userId, fee: 0 })
-      return;
-    }
-    if (coins >= 100) {
-      setCoins(coins - 100);
-      alert('Gift terkirim - 100 coins kepotong');
-      // Potong 10% fee nggo pemilik
-      // supabase.from('wallets').update({ coins: coins - 100 }).eq('user_id', 'xxx')
-      // supabase.from('transactions').insert({ type: 'gift', amount: 100, fee: 10 })
-    } else {
-      alert('Coins kurang, Topup disik neng Dompet');
-      setTab('dompet');
+  const login = (n,e) => {
+    const r = isOwner(n,e)? 'OWNER' : 'USER';
+    const u = {name:n, email:e, role:r};
+    setUser(u); setRole(r);
+    localStorage.setItem('td_user', JSON.stringify(u));
+    localStorage.setItem('td_role', r);
+    setView(r==='OWNER'?'owner':'radar');
+    if(r==='USER' && users.length===0){
+      setTransaksi([{id:1, type:'Bonus Daftar Real', jumlah:10000, tgl:new Date().toLocaleDateString()}]);
+      setSaldo(10000);
     }
   };
 
-  const handleTopup = (metode) => {
-    const amount = 20000;
-    alert(`Topup ${metode} Rp${amount} - status PENDING. Nek duit asli mlebu, finance-processor bakal ubah jadi SUCCESS & coins nambah otomatis.`);
-    // Alur REAL:
-    // 1. supabase.from('topup_requests').insert({ user_id, amount, metode, status: 'pending' })
-    // 2. User transfer neng SeaBank/DANA mu
-    // 3. Webhook Midtrans -> Edge Function finance-processor -> cek duit mlebu tenan
-    // 4. UPDATE wallets SET coins = coins + X WHERE user_id
-    // 5. INSERT transactions status success
-  };
-
-  const handleWd = () => {
-    alert('WD Request - potong coins + fee 10% nggo pemilik. Diproses via finance-processor');
-  };
-
-  if (page === 'auth') {
+  if(view==='login'){
     return (
-      <div style={styles.auth}>
-        <div style={styles.logo} onClick={handleLogoTap}>
-          <h1 style={{ margin: 0, letterSpacing: 2 }}>LOCAL AREA</h1>
-          <p style={{ fontSize: 12, opacity: 0.7, marginTop: 5 }}>Tap logo 5x untuk mode rahasia</p>
+      <div className="max-w-[430px] mx-auto min-h-screen bg-black text-white p-6 flex flex-col justify-center">
+        <h1 className="text-3xl font-black">TemanDekat</h1>
+        <p className="text-sm text-zinc-400">REAL - Tanpa Demo - Asisten Aktif</p>
+        <div className="mt-2 bg-blue-900/30 border border-blue-800 p-3 rounded-xl">
+          <p className="text-xs font-bold text-blue-300">🤖 Asisten: {asistenTexts[0]}</p>
         </div>
-
-        <div style={styles.authBox}>
-          <button style={styles.btnPrimary} onClick={handleDaftar}>DAFTAR (Jadi User)</button>
-          <button style={styles.btnSecondary} onClick={() => setPage('user')}>LOG IN (User Biasa)</button>
-          <p style={{ fontSize: 11, marginTop: 15, opacity: 0.6, textAlign: 'center' }}>
-            Pemilik yo kudu daftar sek nek pengen dadi User.<br/>Login pemilik rahasia, ora ono tombol e.
-          </p>
+        <div className="mt-6 bg-zinc-900 p-4 rounded-2xl">
+          <input id="nm" placeholder="Nama (triangga = owner)" className="w-full p-3 bg-zinc-800 rounded-xl text-sm" />
+          <input id="em" placeholder="Email" className="w-full mt-3 p-3 bg-zinc-800 rounded-xl text-sm" />
+          <button onClick={()=>{const n=document.getElementById('nm').value; const e=document.getElementById('em').value; if(n&&e) login(n,e)}} className="w-full mt-4 bg-white text-black py-3 rounded-xl font-bold">Masuk (Real)</button>
+          <p className="text-[10px] text-zinc-500 mt-2">Demo dihapus, hanya user real yang daftar yang muncul di radar.</p>
         </div>
-
-        {showOwnerLogin && (
-          <div style={styles.ownerModal}>
-            <h3>Login Pemilik Rahasia</h3>
-            <input type="password" placeholder="PIN Pemilik" value={pin} onChange={e => setPin(e.target.value)} style={styles.input} />
-            <button onClick={handleOwnerLogin} style={styles.btnPrimary}>Masuk Mode Dewa</button>
-            <button onClick={() => setShowOwnerLogin(false)} style={styles.btnText}>Batal</button>
-          </div>
-        )}
       </div>
-    );
+    )
+  }
+
+  if(role==='OWNER' && view==='owner'){
+    return (
+      <div className="max-w-[430px] mx-auto min-h-screen bg-black text-white pb-20">
+        <div className="p-4 bg-zinc-900"><h1 className="font-bold">Dashboard Pemilik - {user.name}</h1><p className="text-xs text-zinc-400">{user.email} - Data Diamanke - Demo Dihapus</p></div>
+        <div className="p-4 space-y-4">
+          <div className="bg-blue-900/20 border border-blue-800 p-3 rounded-xl"><p className="text-xs font-bold">🤖 Asisten Owner:</p><p className="text-xs mt-1">Saiki user masih {users.length} (real). Kowe iso lihat siapa daftar, uang masuk, kasih saldo manual. Demo Rina Budi sudah tak guwak.</p></div>
+          <div className="grid grid-cols-2 gap-3"><div className="bg-green-900/30 p-3 rounded-xl"><p className="text-xs">User Real</p><p className="font-bold">{users.length} orang</p></div><div className="bg-zinc-900 p-3 rounded-xl"><p className="text-xs">Uang Masuk Real</p><p className="font-bold">Rp {transaksi.filter(t=>t.jumlah>0).reduce((a,b)=>a+b.jumlah,0).toLocaleString()}</p></div></div>
+          <div className="bg-zinc-900 p-3 rounded-xl">
+            <p className="font-bold text-sm">User Real Yang Daftar (Bukan Demo)</p>
+            {users.length===0? <p className="text-xs text-zinc-500 mt-2">Belum ada user real. Undang teman daftar, nanti muncul di sini.</p> : users.map(u=><div key={u.id} className="text-xs mt-2 bg-zinc-800 p-2 rounded">{u.name} - {u.email}</div>)}
+          </div>
+          <button onClick={()=>setView('radar')} className="w-full bg-zinc-800 py-3 rounded-xl text-sm">Lihat Radar (Real)</button>
+          <button onClick={()=>{localStorage.clear(); location.reload()}} className="w-full text-xs text-zinc-500">Log Out</button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div style={styles.app}>
-      <header style={styles.header}>
-        <h3 style={{ margin: 0 }}>LOCAL AREA {mode === 'owner' && <span style={{ color: '#FFD700' }}>• DEWA</span>}</h3>
-        <div style={styles.coinBox}>
-          <span>Coins: {coins}</span>
-          <span style={{ marginLeft: 10 }}>Rp{saldo}</span>
-        </div>
-      </header>
+    <div className="max-w-[430px] mx-auto min-h-screen bg-black text-white pb-24">
+      <div className="p-4 flex justify-between border-b border-zinc-900"><div><h1 className="font-black">TemanDekat</h1><p className="text-[10px] text-zinc-400">Rp {saldo.toLocaleString()} • REAL • Tanpa Demo</p></div><div className="text-xs bg-zinc-800 px-2 py-1 rounded-full">{user.name}</div></div>
 
-      <main style={styles.main}>
-        {tab === 'dekat' && (
-          <div>
-            <h4>Beranda Dekat</h4>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 15 }}>
-              <button style={styles.smallBtn}>Saran</button>
-              <button style={styles.smallBtn}>Gift</button>
-              <button style={styles.smallBtn}>Like</button>
-              <button style={styles.smallBtn}>Hiburan</button>
-              <button style={{ ...styles.smallBtn, background: '#ff4757', color: 'white' }}>pertolongan</button>
-            </div>
-            <input placeholder="Tulis saran anonim..." value={saran} onChange={e => setSaran(e.target.value)} style={styles.inputFull} />
-            <button style={styles.btnPrimary} onClick={() => { alert('Saran terkirim anonim'); setSaran(''); }}>Kirim</button>
+      {/* ASISTEN MANDU UTAMA */}
+      <div className="m-4 bg-white text-black p-3 rounded-2xl flex gap-3">
+        <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">A</div>
+        <div className="flex-1"><p className="text-xs font-bold">Asisten TemanDekat</p><p className="text-xs mt-1">{asistenTexts[asistenStep]}</p><div className="flex gap-2 mt-2"><button onClick={()=>setAsistenStep(s=> (s+1)%asistenTexts.length)} className="bg-black text-white px-3 py-1 rounded-full text-[10px]">Next Panduan</button><button onClick={()=>{navigator.geolocation?.getCurrentPosition(()=>setAsistenStep(1))}} className="bg-zinc-200 px-3 py-1 rounded-full text-[10px]">Aktifkan GPS</button></div></div>
+      </div>
 
-            <div style={{ marginTop: 20 }}>
-              {users.map(u => (
-                <div key={u.id} style={styles.userCard}>
-                  <div>
-                    <b>{u.nama}</b><br/><small>{u.lokasi} - Coins {u.coins}</small>
-                  </div>
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    <button onClick={() => handleGift(u.id)} style={styles.smallBtn}>Gift</button>
-                    {mode === 'owner' && (
-                      <>
-                        <button onClick={() => setEditUser(u)} style={{ ...styles.smallBtn, background: '#FFD700' }}>Edit</button>
-                        <button style={{ ...styles.smallBtn, background: '#2ed573', color: 'white' }}>Delok</button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+      {view==='radar' && (
+        <div className="p-4">
+          <div className="bg-zinc-900 rounded-2xl p-4">
+            <p className="font-bold text-sm">Radar Maksimal - Real</p>
+            <div className="w-48 h-48 mx-auto mt-4 relative"><div className="absolute inset-0 rounded-full border border-zinc-700"></div><div className="absolute inset-0 rounded-full border-2 border-green-500 border-t-transparent animate-spin"></div><div className="absolute top-1/2 left-1/2 w-2 h-2 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>{users.length===0 && <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-zinc-500 text-center">Kosong<br/>Tunggu user real</p>}</div>
+            <div className="flex gap-2 mt-4">{[100,500,1000,5000].map(r=><button key={r} onClick={()=>setRadius(r)} className={`px-3 py-1 rounded-full text-xs ${radius===r?'bg-white text-black':'bg-zinc-800'}`}>{r>=1000?r/1000+'km':r+'m'}</button>)}</div>
           </div>
-        )}
-
-        {tab === 'chat' && <div><h4>Chat</h4><p>Chat karo wong cedak. Pemilik iso ndelok kabeh chat (Mode Dewa).</p></div>}
-
-        {tab === 'hiburan' && (
-          <div>
-            <h4>Hiburan - Ben Betah</h4>
-            <p>Jantung e APK ben user betah, ora bosen.</p>
-            <div style={styles.videoGrid}>
-              <div style={styles.video}>Live 1</div>
-              <div style={styles.video}>Video 2</div>
-              <div style={styles.video}>Live 3</div>
-            </div>
-            {mode === 'owner' && <button style={styles.btnPrimary}>Edit Hiburan (Mode Dewa)</button>}
+          <div className="mt-4">
+            {users.length===0? (
+              <div className="bg-zinc-900 p-6 rounded-2xl text-center"><p className="text-sm font-bold">Belum ada wong cedak</p><p className="text-xs text-zinc-400 mt-1">Demo tak guwak. Saiki nunggu wong real daftar. Asisten akan mandu kamu cara undang teman dapat +10k.</p><button onClick={()=>{const link=window.location.href; navigator.clipboard.writeText(link); alert('Link disalin! Share ke teman ben daftar.')}} className="mt-3 bg-white text-black px-4 py-2 rounded-full text-xs font-bold">Undang Teman (+10k)</button></div>
+            ) : users.filter(u=>u.jarak<=radius).map(u=>(
+              <div key={u.id} className="bg-zinc-900 p-3 rounded-xl flex justify-between items-center mt-2"><div><p className="text-sm font-bold">{u.name}</p><p className="text-xs text-zinc-400">{u.jarak}m</p></div><button onClick={()=>{setTarget(u); setView('chat')}} className="bg-white text-black px-3 py-1 rounded-full text-xs">Chat Real</button></div>
+            ))}
           </div>
-        )}
-
-        {tab === 'dompet' && (
-          <div>
-            <h4>Dompet - Iso Dadi Duit</h4>
-            <p>Coins: {coins} | Saldo: Rp{saldo}</p>
-            <h5>Topup REAL (Duit mlebu SeaBank mu)</h5>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button onClick={() => handleTopup('DANA')} style={styles.smallBtn}>DANA</button>
-              <button onClick={() => handleTopup('ShopeePay')} style={styles.smallBtn}>ShopeePay</button>
-              <button onClick={() => handleTopup('SeaBank')} style={styles.smallBtn}>SeaBank</button>
-              <button onClick={() => handleTopup('GoPay')} style={styles.smallBtn}>GoPay</button>
-            </div>
-            <h5 style={{ marginTop: 15 }}>Withdraw</h5>
-            <button onClick={handleWd} style={styles.btnPrimary}>WD Sekarang (fee 10% nggo pemilik)</button>
-            <div style={{ marginTop: 15 }}>
-              <h5>Riwayat Transaksi (Supabase: transactions)</h5>
-              <small>Topup 20k - success - DANA<br/>Gift ke Sari - 100 coins - fee 10</small>
-            </div>
-            {mode === 'owner' && (
-              <div style={{ marginTop: 20, padding: 10, background: '#222', borderRadius: 8 }}>
-                <h5 style={{ color: '#FFD700' }}>Saldo Pemilik (soko fee)</h5>
-                <p>Rp 152.000 - soko fee topup & gift user</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'profil' && (
-          <div>
-            <h4>Profil</h4>
-            <p>Mode: {mode} {mode === 'owner' && '(DEWA - iso ngedit opo wae, ndelok sopo wae, nge-gift sopo wae)'}</p>
-            <button onClick={() => setPage('auth')} style={styles.btnSecondary}>Logout</button>
-          </div>
-        )}
-      </main>
-
-      <nav style={styles.nav}>
-        <button onClick={() => setTab('dekat')} style={tab === 'dekat' ? styles.navActive : styles.navBtn}>Beranda</button>
-        <button onClick={() => setTab('chat')} style={tab === 'chat' ? styles.navActive : styles.navBtn}>Chat</button>
-        <button onClick={() => setTab('hiburan')} style={tab === 'hiburan' ? styles.navActive : styles.navBtn}>Hiburan</button>
-        <button onClick={() => setTab('dompet')} style={tab === 'dompet' ? styles.navActive : styles.navBtn}>Dompet</button>
-        <button onClick={() => setTab('profil')} style={tab === 'profil' ? styles.navActive : styles.navBtn}>Profil</button>
-      </nav>
-
-      {editUser && (
-        <div style={styles.ownerModal}>
-          <h3>Edit User (Mode Dewa)</h3>
-          <p>{editUser.nama}</p>
-          <input defaultValue={editUser.nama} style={styles.input} />
-          <input defaultValue={editUser.coins} style={styles.input} />
-          <button onClick={() => setEditUser(null)} style={styles.btnPrimary}>Simpen</button>
         </div>
       )}
-    </div>
-  );
-}
 
-const styles = {
-  auth: { minHeight: '100vh', background: '#000', color: '#FFD700', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  logo: { textAlign: 'center', marginBottom: 30, cursor: 'pointer', userSelect: 'none' },
-  authBox: { width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 10 },
-  btnPrimary: { background: '#FFD700', color: '#000', border: 'none', padding: '12px', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' },
-  btnSecondary: { background: '#222', color: '#FFD700', border: '1px solid #FFD700', padding: '12px', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' },
-  btnText: { background: 'transparent', color: '#fff', border: 'none', padding: 8, cursor: 'pointer' },
-  input: { width: '100%', padding: 10, borderRadius: 8, border: '1px solid #333', background: '#111', color: 'white', marginBottom: 10 },
-  inputFull: { width: '100%', padding: 10, borderRadius: 8, border: '1px solid #333', background: '#111', color: 'white', marginBottom: 10, boxSizing: 'border-box' },
-  ownerModal: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#111', padding: 20, borderRadius: 12, border: '1px solid #FFD700', width: 280, zIndex: 10 },
-  app: { minHeight: '100vh', background: '#000', color: 'white', paddingBottom: 70 },
-  header: { background: '#111', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #222', position: 'sticky', top: 0 },
-  coinBox: { fontSize: 12, background: '#222', padding: '5px 10px', borderRadius: 20 },
-  main: { padding: 15 },
-  smallBtn: { padding: '6px 10px', borderRadius: 6, border: 'none', background: '#222', color: 'white', cursor: 'pointer', fontSize: 12 },
-  userCard: { background: '#111', padding: 10, borderRadius: 8, marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  videoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 },
-  video: { background: '#111', height: 100, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  nav: { position: 'fixed', bottom: 0, left: 0, right: 0, background: '#111', display: 'flex', justifyContent: 'space-around', padding: '10px 0', borderTop: '1px solid #222' },
-  navBtn: { background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: 12 },
-  navActive: { background: '#FFD700', border: 'none', color: '#000', cursor: 'pointer', fontSize: 12, padding: '6px 12px', borderRadius: 20, fontWeight: 'bold' },
-};
+      {view==='dompet' && (
+        <div className="p-4 space-y-4">
+          <div className="bg-zinc-900 p-4 rounded-2xl"><p className="text-xs">Dompet Real</p><p className="text-2xl font-black">Rp {saldo.toLocaleString()}</p><p className="text-[10px] text-zinc-400 mt-1">Tanpa demo, saldo real dari hiburan & top up Midtrans</p></div>
+        </div>
+      )}
+
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-zinc-900 flex justify-around py-2 border-t border-zinc-800">
+        <button onClick={()=>setView('radar')} className="text-xs">📡<br/>Radar</button>
+        <button onClick={()=>setView('dompet')} className="text-xs">💰<br/>Dompet</button>
+        <button onClick={()=>setView('owner')} className="text-xs">👤<br/>Profil</button>
+      </div>
+    </div>
+  )
+}
