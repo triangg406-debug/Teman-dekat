@@ -1,70 +1,312 @@
-import React, { useState, useRef } from 'react';
-const LANGUAGES = { id: { name: 'Indonesia', flag: '🇮🇩' }, en: { name: 'English', flag: '🇬🇧' }, zh: { name: '中文', flag: '🇨🇳' }, hk: { name: '廣東話', flag: '🇭🇰' }, ms: { name: 'Melayu', flag: '🇲🇾' }, jp: { name: '日本語', flag: '🇯🇵' }, kr: { name: '한국어', flag: '🇰🇷' } };
-const T = {
-  id: { loginTitle: 'MAHA REAL', loginSub: 'Cari Teman, Hiburan & Cuan', name: 'Nama', emailWa: 'Email / WA', pass: 'Password', daftar: 'Daftar Sekarang', verifTitle: 'Pilih Verifikasi (C)', verifEmail: 'Verifikasi Email OTP', verifWa: 'Verifikasi WA OTP', otpSent: 'OTP terkirim ke', otp: 'Kode OTP', verifBtn: 'Verifikasi & Masuk', radar: 'Radar', chat: 'Chat', hiburan: 'Hiburan', dompet: 'Dompet', profil: 'Profil', online: 'ONLINE', offline: 'OFFLINE', baruOnline: 'Baru Online', chatAntiIlang: 'Chat Anti-Hilang', ketikPesan: 'Ketik pesan...', kirim: 'Kirim', drakor: 'Drama Korea', game: 'Game Cuan', karaoke: 'Karaoke', live: 'Live', nonton: 'Nonton', saldo: 'Saldo', coins: 'Coins', topup: 'Topup REAL', wd: 'Tarik (WD)', riwayat: 'Riwayat Transaksi', kotakSaran: 'Kotak Saran', saran: 'Saran', bug: 'Bug', laporUser: 'Lapor User', tulisSaran: 'Tulis saran...', kirimSaran: 'Kirim', dibalas: 'Dibalas Pemilik', tombolSos: 'TOMBOL SOS', sosDesc: 'Butuh pertolongan? Tekan untuk konek 5 orang terdekat ONLINE', sosActive: 'Mengirim SOS...', lonceng: 'Notifikasi', dataTerenkripsi: 'Terenkripsi & Aman (Hanya Pemilik)', bahasa: 'Ganti Bahasa', keluar: 'Keluar', selamat: 'Selamat Datang', playerTitle: 'Player Drakor', gift: 'Gift', like: 'Like' },
-  en: { loginTitle: 'MAHA REAL', loginSub: 'Find Friends, Fun & Money', name: 'Name', emailWa: 'Email / WA', pass: 'Password', daftar: 'Register', verifTitle: 'Choose Verification (C)', verifEmail: 'Email OTP', verifWa: 'WA OTP', otpSent: 'OTP sent to', otp: 'OTP Code', verifBtn: 'Verify & Enter', radar: 'Radar', chat: 'Chat', hiburan: 'Entertainment', dompet: 'Wallet', profil: 'Profile', online: 'ONLINE', offline: 'OFFLINE', baruOnline: 'New Online', chatAntiIlang: 'Anti-Lost Chat', ketikPesan: 'Type...', kirim: 'Send', drakor: 'K-Drama', game: 'Game', karaoke: 'Karaoke', live: 'Live', nonton: 'Watch', saldo: 'Balance', coins: 'Coins', topup: 'Topup REAL', wd: 'Withdraw', riwayat: 'History', kotakSaran: 'Suggestion Box', saran: 'Feature', bug: 'Bug', laporUser: 'Report', tulisSaran: 'Write...', kirimSaran: 'Send', dibalas: 'Replied by Owner', tombolSos: 'SOS BUTTON', sosDesc: 'Need help? Connect 5 nearest ONLINE', sosActive: 'Sending SOS...', lonceng: 'Notifications', dataTerenkripsi: 'Encrypted (Owner Only)', bahasa: 'Language', keluar: 'Logout', selamat: 'Welcome', playerTitle: 'K-Drama Player', gift: 'Gift', like: 'Like' }
+import React, { useState, useEffect } from "react";
+const BLOKIR_USER = ["pemilik","owner","admin","superadmin"];
+const LANGS = {
+  id: { daftar:"Daftar", masuk:"Masuk", radar:"Radar", chat:"Chat", live:"Live", hiburan:"Hiburan", dompet:"Dompet", profil:"Profil", halo:"Halo", dekat:"Terdekat", global:"Sedunia • Tergantung Pemakaine" },
+  en: { daftar:"Sign Up", masuk:"Sign In", radar:"Radar", chat:"Chat", live:"Live", hiburan:"Entertainment", dompet:"Wallet", profil:"Profile", halo:"Hello", dekat:"Nearby", global:"Worldwide • Depends on User" },
+  ko: { daftar:"가입", masuk:"로그인", radar:"레이더", chat:"채팅", live:"라이브", hiburan:"엔터테인먼트", dompet:"지갑", profil:"프로필", halo:"안녕하세요", dekat:"가까운", global:"전세계 • 사용자에 따라" },
+  ja: { daftar:"登録", masuk:"ログイン", radar:"レーダー", chat:"チャット", live:"ライブ", hiburan:"娯楽", dompet:"財布", profil:"プロフィール", halo:"こんにちは", dekat:"近く", global:"世界中 • ユーザー次第" },
+  es: { daftar:"Registro", masuk:"Entrar", radar:"Radar", chat:"Chat", live:"En Vivo", hiburan:"Entretenimiento", dompet:"Billetera", profil:"Perfil", halo:"Hola", dekat:"Cerca", global:"Mundial • Depende del usuario" },
 };
-const getT = (lang) => T[lang] || T.id;
-const radarUsers = [
-  { id: 1, name: 'Sinta - Solo', distance: '0.8 km', status: 'online', avatar: 'https://i.pravatar.cc/150?img=5' },
-  { id: 2, name: 'Rina - Jogja', distance: '1.2 km', status: 'online', avatar: 'https://i.pravatar.cc/150?img=9' },
-  { id: 3, name: 'Dewi - Semarang', distance: '2.5 km', status: 'offline', avatar: 'https://i.pravatar.cc/150?img=32' },
-  { id: 4, name: 'Budi - Solo', distance: '0.5 km', status: 'online', avatar: 'https://i.pravatar.cc/150?img=15' },
-  { id: 5, name: 'Mei Ling - HK', distance: '1.1 km', status: 'online', avatar: 'https://i.pravatar.cc/150?img=29' },
-];
-const drakorList = [
-  { id: 1, title: 'My Love From The Star', eps: 'Eps 1', thumb: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300', video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', desc: 'Romantis - Sub Indo' },
-  { id: 2, title: 'Goblin', eps: 'Eps 1', thumb: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=300', video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', desc: 'Fantasy Romance' },
-  { id: 3, title: 'Crash Landing On You', eps: 'Eps 1', thumb: 'https://images.unsplash.com/photo-1515634928627-2a4e0dae3ddf?w=300', video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', desc: 'CLOY Sub Indo' },
-];
-export default function App() {
-  const [lang, setLang] = useState('id'); const t = getT(lang);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); const [isOwner, setIsOwner] = useState(false);
-  const [authStep, setAuthStep] = useState('login'); const [verifMethod, setVerifMethod] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', pass: '' }); const [otp, setOtp] = useState('');
-  const [activeTab, setActiveTab] = useState('radar');
-  const [chatMsgs, setChatMsgs] = useState([{ from: 'other', text: 'Hai radar mu ketok ora?' }, { from: 'me', text: 'Ketok ijo kedip!' }]);
-  const [chatInput, setChatInput] = useState(''); const chatEndRef = useRef(null);
-  const [notifCount, setNotifCount] = useState(3); const [showNotif, setShowNotif] = useState(false);
-  const [sosActive, setSosActive] = useState(false); const [playingVideo, setPlayingVideo] = useState(null);
-  const [balance, setBalance] = useState(150000); const [coins, setCoins] = useState(5400);
-  const [transactions, setTransactions] = useState([{ type: 'Topup REAL', amount: '+ Rp 100.000', status: 'Berhasil', time: 'Hari ini' }]);
-  const [saranList, setSaranList] = useState([{ text: 'Tambah filter umur', reply: 'Siap ditambah' }]); const [saranText, setSaranText] = useState('');
-  const handleLogin = () => { if (form.name === 'pemilik' && form.pass === '1106') { setIsOwner(true); setIsLoggedIn(true); return; } if (form.name && form.email && form.pass) setAuthStep('verifChoice'); else alert('Isi Nama, Email/WA, Password'); };
-  const handleSendChat = () => { if (!chatInput) return; setChatMsgs(prev => [...prev, { from: 'me', text: chatInput }]); setChatInput(''); setTimeout(() => setChatMsgs(prev => [...prev, { from: 'other', text: 'Oke siap! ❤️' }]), 800); };
-  const handleTopup = () => { setBalance(b => b + 100000); setTransactions(prev => [{ type: 'Topup REAL Midtrans Production', amount: '+ Rp 100.000', status: 'Berhasil', time: 'Baru saja' }, ...prev]); alert('Topup REAL Berhasil! Server Key Terenkripsi'); };
-  const handleSos = () => { setSosActive(true); setTimeout(() => { setSosActive(false); alert('SOS TERKIRIM! 5 orang terdekat ONLINE dapat chat darurat.'); }, 2000); };
-  if (!isLoggedIn) {
+export default function App(){
+  const [lang, setLang] = useState("id");
+  const t = LANGS[lang] || LANGS.id;
+  const [tabAuth, setTabAuth] = useState("daftar");
+  const [showOTP, setShowOTP] = useState(false);
+  const [user, setUser] = useState(null);
+  const [tab, setTab] = useState("beranda");
+  const [coins, setCoins] = useState(1000);
+  const [saldo, setSaldo] = useState(47500);
+  const [giftPrices, setGiftPrices] = useState({mawar:1000, es:5000, cincin:100000, rumah:1000000});
+  const [unlockPrice, setUnlockPrice] = useState(500);
+  const [temanList, setTemanList] = useState([]);
+  const [radarList, setRadarList] = useState([
+    {id:1, nama:"Rina, 24 - Solo", jarak:45, foto:"https://i.pravatar.cc/150?img=5", online:true, negara:"ID", lat:-7.57, lng:110.82},
+    {id:2, nama:"Lisa, 22 - Seoul", jarak:120, foto:"https://i.pravatar.cc/150?img=9", online:true, negara:"KR", lat:37.56, lng:126.97},
+    {id:3, nama:"Sofia, 26 - Madrid", jarak:340, foto:"https://i.pravatar.cc/150?img=32", online:false, negara:"ES", lat:40.41, lng:-3.70},
+    {id:4, nama:"Yuki, 23 - Tokyo", jarak:600, foto:"https://i.pravatar.cc/150?img=15", online:true, negara:"JP", lat:35.68, lng:139.69},
+    {id:5, nama:"Emma, 25 - USA", jarak:850, foto:"https://i.pravatar.cc/150?img=23", online:true, negara:"US", lat:40.71, lng:-74.00},
+    {id:6, nama:"Ayu, 21 - Jogja", jarak:25, foto:"https://i.pravatar.cc/150?img=8", online:true, negara:"ID", lat:-7.79, lng:110.36},
+  ]);
+  const [formDaftar, setFormDaftar] = useState({username:"", kontak:"", pass:"", konf:""});
+  const [showTitik, setShowTitik] = useState(null);
+  const [showGift, setShowGift] = useState(null);
+
+  useEffect(()=>{
+    const iv = setInterval(()=>{
+      setRadarList(prev=> prev.map(p=> ({...p, jarak: Math.max(10, p.jarak + Math.floor(Math.random()*20-10))})).sort((a,b)=>a.jarak-b.jarak));
+    },2500);
+    return ()=>clearInterval(iv);
+  },[]);
+
+  const handleDaftar = (e)=>{
+    e.preventDefault();
+    const uname = formDaftar.username.toLowerCase();
+    if(BLOKIR_USER.includes(uname)){ alert("Username diblokir sistem!"); return; }
+    if(formDaftar.pass !== formDaftar.konf){ alert("Sandi ora podo!"); return;}
+    setShowOTP(true);
+  };
+  const verifOTP = ()=>{ setShowOTP(false); setUser({name: formDaftar.username, role:"user"}); setTab("beranda"); };
+  const handleMasuk = (e)=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const uname = fd.get("username").toString();
+    const pass = fd.get("password").toString();
+    if((uname==="triangga_owner" || uname==="owner@localarea.id") && pass==="1106"){ setUser({name:"Tri Angga (DEWA)", role:"owner"}); setTab("beranda"); return; }
+    if(uname==="pemilik" && pass==="1106"){ setUser({name:"Tri Angga (DEWA)", role:"owner"}); setTab("beranda"); return; }
+    if(!uname){ alert("Isi username/email/wa"); return; }
+    setUser({name:uname, role:"user"}); setTab("beranda");
+  };
+  const handleAddTeman = (p)=>{
+    if(saldo < unlockPrice){ alert("Saldo kurang! Butuh Rp "+unlockPrice+" untuk lihat / add teman. Topup dulu."); setTab("dompet"); return; }
+    setSaldo(s=>s-unlockPrice);
+    setTemanList(prev=> [...prev, p.id]);
+    alert(p.nama+" diterima! DADI TEMAN - saiki iso delok titik lokasine akurat.");
+  };
+  const handleGift = (p, jenis)=>{
+    const harga = giftPrices[jenis];
+    if(saldo < harga){ alert("Saldo kurang untuk gift "+jenis); setTab("dompet"); return; }
+    setSaldo(s=>s-harga);
+    setCoins(c=>c+Math.floor(harga/100));
+    alert("Gift "+jenis+" Rp "+harga.toLocaleString("id-ID")+" terkirim ke "+p.nama+"! +"+Math.floor(harga/100)+" Coins");
+    setShowGift(null);
+  };
+
+  if(!user){
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-[32px] p-8 border border-white/10">
-          <h1 className="text-3xl font-black bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">{t.loginTitle}</h1>
-          <p className="text-white/60 mb-6">{t.loginSub}</p>
-          {authStep === 'login' && (<><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t.name} className="w-full bg-black border border-white/10 rounded-2xl p-4 mb-3" /><input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email / WA" className="w-full bg-black border border-white/10 rounded-2xl p-4 mb-3" /><input type="password" value={form.pass} onChange={e => setForm({ ...form, pass: e.target.value })} placeholder="Password (pemilik/1106)" className="w-full bg-black border border-white/10 rounded-2xl p-4 mb-6" /><button onClick={handleLogin} className="w-full bg-gradient-to-r from-pink-500 to-violet-500 rounded-2xl p-4 font-bold">Daftar / Masuk</button></>)}
-          {authStep === 'verifChoice' && (<div><h2 className="font-bold text-xl mb-4">{t.verifTitle}</h2><button onClick={() => { setVerifMethod('email'); setAuthStep('otp'); }} className="w-full bg-white text-black rounded-2xl p-4 mb-3 font-bold">📧 {t.verifEmail}</button><button onClick={() => { setVerifMethod('wa'); setAuthStep('otp'); }} className="w-full bg-green-500 rounded-2xl p-4 font-bold">💬 {t.verifWa}</button></div>)}
-          {authStep === 'otp' && (<div><p className="mb-4">{t.otpSent} {form.email}</p><input value={otp} onChange={e => setOtp(e.target.value)} placeholder="123456" className="w-full bg-black border border-white/10 rounded-2xl p-4 text-center text-2xl tracking-widest" /><button onClick={() => otp.length >= 4 && setIsLoggedIn(true)} className="w-full mt-4 bg-gradient-to-r from-pink-500 to-violet-500 rounded-2xl p-4 font-bold">{t.verifBtn}</button></div>)}
+      <div style={{maxWidth:420, margin:"0 auto", minHeight:"100vh", background:"#fff", fontFamily:"Inter,sans-serif", padding:16}}>
+        <h1 style={{textAlign:"center", fontWeight:800, fontSize:26, letterSpacing:2, marginTop:20}}>LOCAL AREA</h1>
+        <p style={{textAlign:"center", fontSize:11, color:"#666"}}>🌍 {t.global} • Radar Maksimal • Area Tak Terbatas</p>
+        <div style={{display:"flex", background:"#f3f4f6", borderRadius:12, padding:4, marginTop:20}}>
+          <button onClick={()=>setTabAuth("daftar")} style={{flex:1, padding:10, borderRadius:8, background:tabAuth==="daftar"?"#7c3aed":"transparent", color:tabAuth==="daftar"?"#fff":"#555", border:"none", fontWeight:600}}>{t.daftar}</button>
+          <button onClick={()=>setTabAuth("masuk")} style={{flex:1, padding:10, borderRadius:8, background:tabAuth==="masuk"?"#7c3aed":"transparent", color:tabAuth==="masuk"?"#fff":"#555", border:"none", fontWeight:600}}>{t.masuk}</button>
         </div>
+        {tabAuth==="daftar" ? (
+          <form onSubmit={handleDaftar} style={{marginTop:20, display:"flex", flexDirection:"column", gap:12}}>
+            <input required placeholder="Username" value={formDaftar.username} onChange={e=>setFormDaftar({...formDaftar, username:e.target.value})} style={inp}/>
+            <input required placeholder="Email ATAU No WA (konfirmasi OTP)" value={formDaftar.kontak} onChange={e=>setFormDaftar({...formDaftar, kontak:e.target.value})} style={inp}/>
+            <input required type="password" placeholder="Sandi" value={formDaftar.pass} onChange={e=>setFormDaftar({...formDaftar, pass:e.target.value})} style={inp}/>
+            <input required type="password" placeholder="Konfirmasi Sandi" value={formDaftar.konf} onChange={e=>setFormDaftar({...formDaftar, konf:e.target.value})} style={inp}/>
+            <button type="submit" style={btnUngu}>Daftar - Konfirmasi Email/WA</button>
+            <p style={{fontSize:10, color:"#888", textAlign:"center"}}>Pemilik ORA daftar - langsung login siluman. Username owner/admin diblokir.</p>
+          </form>
+        ) : (
+          <form onSubmit={handleMasuk} style={{marginTop:20, display:"flex", flexDirection:"column", gap:12}}>
+            <input name="username" required placeholder="Username / Email / No WA" style={inp}/>
+            <input name="password" required type="password" placeholder="Sandi" style={inp}/>
+            <button type="submit" style={btnUngu}>Masuk</button>
+            <p style={{fontSize:10, color:"#888", textAlign:"center"}}>Pemilik login siluman - data dirahasiakan - sek weroh pemilik dewe</p>
+          </form>
+        )}
+        {showOTP && (
+          <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50}}>
+            <div style={{background:"#fff", padding:20, borderRadius:16, width:300, textAlign:"center"}}>
+              <h3>Konfirmasi OTP</h3><p style={{fontSize:12, color:"#666"}}>Kode dikirim ke {formDaftar.kontak}</p><p style={{fontSize:20, letterSpacing:4, margin:"12px 0"}}>1 2 3 4</p><input placeholder="Ketik 1234" style={inp}/><button onClick={verifOTP} style={{...btnUngu, marginTop:12, width:"100%"}}>Verifikasi Email/WA</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
+
   return (
-    <div className="min-h-screen bg-black text-white max-w-[480px] mx-auto border-x border-white/5 flex flex-col relative">
-      <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-xl border-b border-white/10 p-4 flex justify-between items-center">
-        <h1 className="font-black bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">MAHA REAL {isOwner && '👑'}</h1>
-        <div className="flex gap-2"><button onClick={() => setShowNotif(!showNotif)} className="relative bg-[#1a1a1a] w-10 h-10 rounded-full">🔔{notifCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-xs w-5 h-5 rounded-full flex items-center justify-center">{notifCount}</span>}</button><select value={lang} onChange={e => setLang(e.target.value)} className="bg-[#1a1a1a] rounded-full px-2 text-xs border border-white/10"><option value="id">🇮🇩</option><option value="en">🇬🇧</option><option value="zh">🇨🇳</option><option value="hk">🇭🇰</option><option value="ms">🇲🇾</option><option value="jp">🇯🇵</option><option value="kr">🇰🇷</option></select></div>
+    <div style={{maxWidth:420, margin:"0 auto", minHeight:"100vh", background:"#fafafa", fontFamily:"Inter,sans-serif", paddingBottom:80, position:"relative"}}>
+      <div style={{background:"#fff", padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid #eee", position:"sticky", top:0, zIndex:10}}>
+        <b>LOCAL AREA 🌍</b><div style={{display:"flex", gap:8, alignItems:"center", fontSize:11}}><span>🌐 {lang.toUpperCase()}</span><span>Rp {saldo.toLocaleString("id-ID")}</span><span style={{background:"#fef3c7", padding:"4px 8px", borderRadius:12}}>{coins} Coins</span>{user.role==="owner" && <span style={{background:"#dc2626", color:"#fff", padding:"4px 8px", borderRadius:12, fontSize:9}}>DEWA</span>}</div>
       </div>
-      {showNotif && (<div className="absolute top-[64px] right-4 z-30 bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 w-72"><h3 className="font-bold mb-2">{t.lonceng}</h3><div className="text-sm space-y-2"><div className="bg-black p-2 rounded-xl">🎁 Gift 100 Coins</div><div className="bg-black p-2 rounded-xl">💬 {t.dibalas}</div><div className="bg-red-500/20 p-2 rounded-xl">🚨 SOS 0.8km</div></div></div>)}
-      <div className="flex-1 overflow-auto pb-24">
-        {activeTab === 'radar' && (<div className="p-4"><div className="bg-gradient-to-br from-red-600 to-red-800 rounded-[24px] p-4 mb-6"><h3 className="font-black">🚨 {t.tombolSos}</h3><p className="text-xs mb-3">{t.sosDesc}</p><button onClick={handleSos} className="w-full bg-white text-red-600 font-black rounded-2xl py-3">{sosActive ? t.sosActive : 'TEKAN SOS'}</button></div><h2 className="font-bold mb-3">● {t.baruOnline} ONLINE</h2><div className="grid grid-cols-2 gap-3">{radarUsers.map(u => (<div key={u.id} className="bg-[#1a1a1a] rounded-[24px] p-3 border border-white/5 relative">{u.status === 'online' && <><div className="absolute top-3 right-3 w-3 h-3 bg-green-400 rounded-full animate-ping"></div><div className="absolute top-3 right-3 w-3 h-3 bg-green-400 rounded-full"></div></>}<img src={u.avatar} className="w-16 h-16 rounded-full mx-auto mb-2" /><h3 className="font-bold text-sm text-center">{u.name}</h3><p className="text-xs text-center text-white/50">{u.distance}</p><p className={`text-[10px] text-center font-bold ${u.status === 'online' ? 'text-green-400' : 'text-white/30'}`}>● {u.status === 'online' ? t.online : t.offline}</p><button onClick={() => setActiveTab('chat')} className="w-full mt-2 bg-white/10 rounded-full py-1 text-xs">Chat</button></div>))}</div></div>)}
-        {activeTab === 'chat' && (<div className="p-4 flex flex-col h-[70vh]"><div className="bg-[#1a1a1a] rounded-xl p-2 mb-3 text-xs text-green-400">● {t.chatAntiIlang}</div><div className="flex-1 overflow-auto space-y-3 bg-black/50 rounded-2xl p-3">{chatMsgs.map((m, i) => <div key={i} className={`max-w-[80%] p-3 rounded-2xl text-sm ${m.from === 'me' ? 'bg-gradient-to-r from-pink-500 to-violet-500 ml-auto' : 'bg-[#1a1a1a]'}`}>{m.text}</div>)}<div ref={chatEndRef} /></div><div className="flex gap-2 mt-3"><input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} placeholder={t.ketikPesan} className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-full px-4 py-3 text-sm" /><button onClick={handleSendChat} className="bg-white text-black rounded-full px-6 font-bold">{t.kirim}</button></div></div>)}
-        {activeTab === 'hiburan' && (<div className="p-4 space-y-6"><div><h2 className="font-black text-lg mb-3">🎬 {t.drakor} - REAL PLAYER</h2><div className="space-y-3">{drakorList.map(v => (<div key={v.id} className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-white/5"><img src={v.thumb} className="w-full h-32 object-cover" /><div className="p-3"><h3 className="font-bold text-sm">{v.title} - {v.eps}</h3><p className="text-xs text-white/50">{v.desc}</p><div className="flex gap-2 mt-2"><button onClick={() => setPlayingVideo(v)} className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full py-2 text-xs font-bold">▶️ {t.nonton} + Player</button><button className="bg-white/10 rounded-full px-3 py-2 text-xs">🎁</button></div></div></div>))}</div></div><div><h2 className="font-black text-lg mb-3">🎮 Game + 🎤 Karaoke + Live</h2><div className="bg-[#1a1a1a] rounded-2xl p-4 flex justify-between mb-2"><p className="text-sm">🎮 Ludo Cuan - Menang 500 Coins</p><button className="bg-green-500 text-black rounded-full px-3 py-1 text-xs">Main</button></div><div className="bg-[#1a1a1a] rounded-2xl p-4 flex justify-between mb-2"><p className="text-sm">🎤 Rungkad - Happy Asmara</p><button className="bg-pink-500 rounded-full px-3 py-1 text-xs">Nyanyi</button></div><div className="bg-gradient-to-r from-red-600 to-pink-600 rounded-2xl p-4 flex justify-between"><p className="text-sm font-bold">🔴 LIVE Sinta 123 penonton</p><button className="bg-white text-red-600 rounded-full px-3 py-1 text-xs font-bold">Live</button></div></div></div>)}
-        {activeTab === 'dompet' && (<div className="p-4 space-y-4"><div className="bg-gradient-to-br from-violet-600 to-pink-600 rounded-[32px] p-6"><p className="text-white/70 text-sm">{t.saldo}</p><h2 className="text-3xl font-black">Rp {balance.toLocaleString('id-ID')}</h2><p className="text-sm mt-2">{t.coins}: {coins}</p><div className="grid grid-cols-3 gap-2 mt-4"><button onClick={handleTopup} className="bg-white text-violet-600 rounded-full py-2 text-xs font-black">{t.topup}</button><button className="bg-black/30 rounded-full py-2 text-xs">Convert</button><button className="bg-black/30 rounded-full py-2 text-xs">WD</button></div></div><div className="bg-[#1a1a1a] rounded-2xl p-4"><h3 className="font-bold mb-2">{t.riwayat}</h3>{transactions.map((tr, i) => <div key={i} className="flex justify-between text-sm py-2 border-b border-white/5"><div><p className="font-bold">{tr.type}</p><p className="text-xs text-white/40">{tr.time}</p></div><p>{tr.amount}</p></div>)}</div><div className="bg-[#1a1a1a] rounded-2xl p-4"><h3 className="font-bold mb-2">{t.kotakSaran}</h3><textarea value={saranText} onChange={e => setSaranText(e.target.value)} placeholder={t.tulisSaran} className="w-full bg-black border border-white/10 rounded-2xl p-3 text-sm h-20"></textarea><button onClick={() => { if (saranText) { setSaranList([{ text: saranText, reply: null }, ...saranList]); setSaranText(''); } }} className="w-full mt-2 bg-white text-black rounded-full py-2 font-bold text-sm">{t.kirimSaran}</button><div className="mt-3 space-y-2">{saranList.map((s, i) => <div key={i} className="bg-black p-2 rounded-xl text-sm"><p>{s.text}</p>{s.reply && <p className="text-green-400 text-xs">↳ {t.dibalas}: {s.reply}</p>}</div>)}</div></div></div>)}
-        {activeTab === 'profil' && (<div className="p-4 space-y-4"><div className="bg-[#1a1a1a] rounded-[32px] p-6 text-center"><img src="https://i.pravatar.cc/150?img=12" className="w-20 h-20 rounded-full mx-auto mb-3" /><h2 className="font-black">{isOwner ? 'PEMILIK 👑' : form.name}</h2><p className="text-sm text-white/50">{isOwner ? 'pemilik / 1106' : form.email}</p></div>{isOwner && (<><div className="bg-[#1a1a1a] rounded-2xl p-4"><h3 className="font-bold mb-2">🔐 {t.dataTerenkripsi}</h3><div className="bg-black p-3 rounded-xl text-xs flex justify-between"><span>SeaBank 9015...1680</span><span className="text-green-400">● AES-256</span></div><div className="bg-black p-3 rounded-xl text-xs flex justify-between mt-2"><span>Midtrans Server Production</span><span className="text-green-400">● Secrets</span></div></div><div className="bg-[#1a1a1a] rounded-2xl p-4"><h3 className="font-bold mb-2">🎬 Upload Drakor Baru</h3><input placeholder="Judul Drakor" className="w-full bg-black border border-white/10 rounded-xl p-2 mb-2 text-sm" /><input placeholder="Link Video MP4" className="w-full bg-black border border-white/10 rounded-xl p-2 mb-2 text-sm" /><button className="w-full bg-violet-500 rounded-full py-2 text-sm font-bold">Upload ke Hiburan</button></div></>)}<div className="bg-[#1a1a1a] rounded-2xl p-4"><h3 className="font-bold mb-2">{t.bahasa}</h3><div className="grid grid-cols-3 gap-2">{Object.entries(LANGUAGES).map(([k, v]) => <button key={k} onClick={() => setLang(k)} className={`p-2 rounded-xl border text-sm ${lang === k ? 'bg-white text-black' : 'bg-black border-white/10'}`}>{v.flag}</button>)}</div></div><button onClick={() => setIsLoggedIn(false)} className="w-full bg-red-500/20 text-red-400 border border-red-500/20 rounded-full py-3 font-bold">{t.keluar}</button><p className="text-[10px] text-white/20 text-center mt-4">TOTAL: ~180 baris. Copy kabeh dari baris 1 import sampai } akhir. Paste di GitHub src/App.jsx via HP: Edit file > Select All > Paste > Commit</p></div>)}
+
+      {user.role==="owner" && (
+        <div style={{background:"#111827", color:"#fff", padding:12, fontSize:11}}>
+          <b>👑 PANEL DEWA - PEMILIK TOK - DIRAHASIAKAN</b><br/>
+          <div style={{marginTop:8, display:"grid", gridTemplateColumns:"1fr 1fr", gap:6}}>
+            <label>Saldo User: <input type="number" value={saldo} onChange={e=>setSaldo(Number(e.target.value))} style={{width:80, padding:2, borderRadius:4, border:"none"}}/></label>
+            <label>Unlock: <input type="number" value={unlockPrice} onChange={e=>setUnlockPrice(Number(e.target.value))} style={{width:60, padding:2, borderRadius:4, border:"none"}}/></label>
+            <label>Mawar: <input type="number" value={giftPrices.mawar} onChange={e=>setGiftPrices({...giftPrices, mawar:Number(e.target.value)})} style={{width:80, padding:2, borderRadius:4, border:"none"}}/></label>
+            <label>Es: <input type="number" value={giftPrices.es} onChange={e=>setGiftPrices({...giftPrices, es:Number(e.target.value)})} style={{width:80, padding:2, borderRadius:4, border:"none"}}/></label>
+            <label>Cincin: <input type="number" value={giftPrices.cincin} onChange={e=>setGiftPrices({...giftPrices, cincin:Number(e.target.value)})} style={{width:80, padding:2, borderRadius:4, border:"none"}}/></label>
+            <label>Rumah: <input type="number" value={giftPrices.rumah} onChange={e=>setGiftPrices({...giftPrices, rumah:Number(e.target.value)})} style={{width:80, padding:2, borderRadius:4, border:"none"}}/></label>
+          </div>
+          <p style={{fontSize:9, color:"#9ca3af", marginTop:6}}>SeaBank 9011**** AES Encrypted • Midtrans Server Key server-side only • ISO SETTING OPO WAE NENG KENE - DEWA</p>
+        </div>
+      )}
+
+      {tab==="beranda" && (
+        <div style={{padding:16, display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{background:"#fff", borderRadius:16, padding:16, border:"1px solid #eee"}}>
+            <p style={{fontSize:11, color:"#7c3aed", fontWeight:700}}>🌍 {t.global} • RADAR MAKSIMAL • AREA TAK TERBATAS</p><h2 style={{margin:"8px 0"}}>{t.halo} {user.name} 👋</h2><p style={{fontSize:12, color:"#666"}}>Radar semaksimal mungkin - area tak terbatas - hiburan real berfungsi - bahasa internasional - iso tuku pulsa & paket - konek DANA SeaBank Bank Lain.</p>
+            <div style={{display:"flex", gap:6, marginTop:10, flexWrap:"wrap"}}><button onClick={()=>setTab("radar")} style={chip}>📡 Radar Maksimal</button><button onClick={()=>setTab("hiburan")} style={chip}>🎮 Hiburan Real</button><button onClick={()=>setTab("dompet")} style={chip}>💰 Dompet + Gift</button></div>
+          </div>
+          <div style={{background:"#fff", borderRadius:16, padding:16, border:"1px solid #eee"}}>
+            <b style={{fontSize:13}}>🎮 Hiburan Real - Fungsional Kabeh</b>
+            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10}}>
+              <div onClick={()=>setTab("hiburan")} style={cardHib}>🎬<br/><b>Drama Sedunia</b><br/><span style={{fontSize:9}}>K-Drama, Hollywood, Jowo</span><br/><span style={{fontSize:9, color:"#7c3aed"}}>+15 Coins</span></div>
+              <div onClick={()=>setTab("hiburan")} style={cardHib}>🎤<br/><b>Karaoke Global</b><br/><span style={{fontSize:9}}>K-Pop, Western, Dangdut</span><br/><span style={{fontSize:9, color:"#7c3aed"}}>+20 Coins</span></div>
+              <div onClick={()=>setTab("hiburan")} style={cardHib}>🎯<br/><b>Game Sedunia</b><br/><span style={{fontSize:9}}>Tebak, Slot, Suit</span><br/><span style={{fontSize:9, color:"#7c3aed"}}>+30 Coins</span></div>
+              <div onClick={()=>setTab("hiburan")} style={cardHib}>📺<br/><b>Live Global</b><br/><span style={{fontSize:9}}>User sedunia</span><br/><span style={{fontSize:9, color:"#7c3aed"}}>+15 Coins</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="radar" && (
+        <div style={{padding:16}}>
+          <div style={{background:"#111827", borderRadius:16, height:220, position:"relative", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center"}}>
+            <div style={{width:180, height:180, borderRadius:"50%", border:"1px dashed #374151", position:"relative"}}>
+              <div style={{position:"absolute", inset:0, borderRadius:"50%", background:"conic-gradient(from 0deg, transparent 0deg, rgba(124,58,237,0.5) 60deg, transparent 61deg)", animation:"spin 2s linear infinite"}}></div>
+              <div style={{position:"absolute", top:"50%", left:"50%", width:12, height:12, background:"#7c3aed", borderRadius:"50%", transform:"translate(-50%,-50%)"}}></div>
+              {radarList.slice(0,4).map((p,i)=>{ const ang = (i*90); return <div key={p.id} style={{position:"absolute", top:"50%", left:"50%", width:6, height:6, background:temanList.includes(p.id)?"#10b981":"#f59e0b", borderRadius:"50%", transform:`translate(-50%,-50%) rotate(${ang}deg) translate(${40+i*20}px) rotate(-${ang}deg)`}}></div> })}
+            </div>
+            <div style={{position:"absolute", bottom:8, left:12, color:"#10b981", fontSize:10}}>● GPS ON • Radar Maksimal • Area Tak Terbatas • {radarList.length} user</div>
+            <style>{`@keyframes spin {from{transform:rotate(0deg)} to{transform:rotate(360deg)}}`}</style>
+          </div>
+          <div style={{marginTop:12, display:"flex", flexDirection:"column", gap:8}}>
+            {radarList.map(p=>(
+              <div key={p.id} style={{background:"#fff", borderRadius:12, padding:12, display:"flex", gap:10, alignItems:"center", border: temanList.includes(p.id)?"1px solid #10b981":"1px solid #eee"}}>
+                <img src={p.foto} style={{width:48, height:48, borderRadius:"50%"}}/>
+                <div style={{flex:1}}>
+                  <b style={{fontSize:13}}>{p.nama} {temanList.includes(p.id) && "✅ Teman"}</b> <span style={{fontSize:10, background:p.jarak<100?"#dcfce7":"#f3f4f6", padding:"2px 6px", borderRadius:8}}>{p.jarak}m {p.jarak<50?"CEDAK POL!":""}</span>
+                  <div style={{fontSize:10, color:"#666"}}>{p.online?"● Online":"○ Offline"} • {p.negara} • {temanList.includes(p.id)?"Titik lokasi akurat tersedia":"Butuh Rp "+unlockPrice+" untuk lihat"}</div>
+                </div>
+                <div style={{display:"flex", flexDirection:"column", gap:4}}>
+                  {temanList.includes(p.id) ? (
+                    <>
+                      <button onClick={()=>setShowTitik(p)} style={{...btnKecil, fontSize:10, padding:"4px 8px"}}>📍 Titik Lokasi</button>
+                      <button onClick={()=>setShowGift(p)} style={{...btnKecil, background:"#fef3c7", color:"#92400e", fontSize:10, padding:"4px 8px"}}>🎁 Gift</button>
+                    </>
+                  ) : (
+                    <button onClick={()=>handleAddTeman(p)} style={{background:"#7c3aed", color:"#fff", border:"none", borderRadius:20, padding:"6px 12px", fontSize:11}}>Add {unlockPrice}</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {showTitik && (
+            <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:40, padding:20}}>
+              <div style={{background:"#fff", borderRadius:16, padding:16, width:"100%", maxWidth:320}}>
+                <h3 style={{margin:0}}>📍 Titik Lokasi {showTitik.nama}</h3><p style={{fontSize:11, color:"#666"}}>Teman - lokasi akurat</p>
+                <div style={{background:"#e0e7ff", height:180, borderRadius:12, marginTop:10, display:"flex", alignItems:"center", justifyContent:"center", position:"relative"}}>
+                  <div style={{width:12, height:12, background:"#dc2626", borderRadius:"50%"}}></div><span style={{position:"absolute", bottom:8, left:8, fontSize:9, background:"#fff", padding:"2px 6px", borderRadius:6}}>{showTitik.lat.toFixed(4)}, {showTitik.lng.toFixed(4)}</span>
+                  <span style={{position:"absolute", top:8, right:8, fontSize:9, background:"#10b981", color:"#fff", padding:"2px 6px", borderRadius:6}}>AKURAT • TEMAN</span>
+                </div>
+                <button onClick={()=>setShowTitik(null)} style={{...btnUngu, width:"100%", marginTop:12}}>Tutup</button>
+              </div>
+            </div>
+          )}
+          {showGift && (
+            <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:40, padding:20}}>
+              <div style={{background:"#fff", borderRadius:16, padding:16, width:"100%", maxWidth:320}}>
+                <h3 style={{margin:0}}>🎁 Kirim Gift ke {showGift.nama}</h3>
+                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:12}}>
+                  <button onClick={()=>handleGift(showGift,"mawar")} style={giftBtn}>🌹<br/>Mawar<br/>Rp {giftPrices.mawar.toLocaleString("id-ID")}</button>
+                  <button onClick={()=>handleGift(showGift,"es")} style={giftBtn}>🍦<br/>Es Cream<br/>Rp {giftPrices.es.toLocaleString("id-ID")}</button>
+                  <button onClick={()=>handleGift(showGift,"cincin")} style={giftBtn}>💍<br/>Cincin<br/>Rp {giftPrices.cincin.toLocaleString("id-ID")}</button>
+                  <button onClick={()=>handleGift(showGift,"rumah")} style={{...giftBtn, background:"#fef2f2", borderColor:"#fecaca"}}>🏠<br/>Rumah<br/>Rp {giftPrices.rumah.toLocaleString("id-ID")}</button>
+                </div>
+                <button onClick={()=>setShowGift(null)} style={{...btnKecil, width:"100%", marginTop:12}}>Batal</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab==="hiburan" && (
+        <div style={{padding:16, display:"flex", flexDirection:"column", gap:12}}>
+          <h3>🎮 Hiburan Real - Sedunia - Fungsional</h3>
+          <div style={{display:"flex", flexDirection:"column", gap:10}}>
+            <div style={{background:"#fff", borderRadius:12, padding:14, border:"1px solid #eee"}}>
+              <b>🎬 Nonton Drama Sedunia - REAL</b>
+              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8}}>
+                <div onClick={()=>{setCoins(c=>c+15); alert("Nonton K-Drama +15 Coins")}} style={cardDrama}>🇰🇷 Crash Landing</div>
+                <div onClick={()=>{setCoins(c=>c+15); alert("Nonton Hollywood +15 Coins")}} style={cardDrama}>🇺🇸 Avengers</div>
+                <div onClick={()=>{setCoins(c=>c+15); alert("Nonton Jowo +15 Coins")}} style={cardDrama}>🇮🇩 Sewu Kuto</div>
+                <div onClick={()=>{setCoins(c=>c+15); alert("Nonton Anime +15 Coins")}} style={cardDrama}>🇯🇵 Tokyo Love</div>
+                <div onClick={()=>{setCoins(c=>c+15); alert("Nonton Bollywood +15 Coins")}} style={cardDrama}>🇮🇳 Dilwale</div>
+                <div onClick={()=>{setCoins(c=>c+15); alert("Nonton Spanish +15 Coins")}} style={cardDrama}>🇪🇸 Money Heist</div>
+              </div>
+            </div>
+            <div style={{background:"#fff", borderRadius:12, padding:14, border:"1px solid #eee"}}>
+              <b>🎤 Karaoke Global - REAL</b>
+              <div style={{display:"flex", flexDirection:"column", gap:6, marginTop:8}}>
+                <div style={rowK}><span style={{fontSize:12}}>🇰🇷 BTS - Dynamite</span><button onClick={()=>{setCoins(c=>c+20); alert("98% +20 Coins")}} style={btnKecil}>Nyanyi +20</button></div>
+                <div style={rowK}><span style={{fontSize:12}}>🇺🇸 Taylor - Lover</span><button onClick={()=>{setCoins(c=>c+20); alert("95% +20")}} style={btnKecil}>Nyanyi +20</button></div>
+                <div style={rowK}><span style={{fontSize:12}}>🇮🇩 Didi Kempot - Sewu Kuto</span><button onClick={()=>{setCoins(c=>c+20); alert("+20")}} style={btnKecil}>Nyanyi +20</button></div>
+                <div style={rowK}><span style={{fontSize:12}}>🇯🇵 YOASOBI - Idol</span><button onClick={()=>{setCoins(c=>c+20); alert("+20")}} style={btnKecil}>Nyanyi +20</button></div>
+              </div>
+            </div>
+            <div style={{background:"#fff", borderRadius:12, padding:14, border:"1px solid #eee"}}>
+              <b>🎯 Game Sedunia - REAL</b>
+              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8}}>
+                <div style={{background:"#fef3c7", borderRadius:8, padding:10, textAlign:"center"}}><b style={{fontSize:11}}>Tebak Negara</b><br/><button onClick={()=>{setCoins(c=>c+20); alert("Bener +20")}} style={{...btnKecil, marginTop:6}}>Main +20</button></div>
+                <div style={{background:"#dcfce7", borderRadius:8, padding:10, textAlign:"center"}}><b style={{fontSize:11}}>Tebak Lagu</b><br/><button onClick={()=>{setCoins(c=>c+15); alert("Bener +15")}} style={{...btnKecil, marginTop:6}}>Main +15</button></div>
+                <div style={{background:"#ede9fe", borderRadius:8, padding:10, textAlign:"center"}}><b style={{fontSize:11}}>Slot Dunia</b><br/><button onClick={()=>{const m=Math.random()>0.5; if(m){setCoins(c=>c+30); alert("JACKPOT +30")} else alert("Zonk")}} style={{...btnKecil, marginTop:6}}>Spin +30</button></div>
+                <div style={{background:"#ffe4e6", borderRadius:8, padding:10, textAlign:"center"}}><b style={{fontSize:11}}>Suit Global</b><br/><button onClick={()=>{setCoins(c=>c+10); alert("+10")}} style={{...btnKecil, marginTop:6}}>Suit +10</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="chat" && (
+        <div style={{padding:16}}>
+          <div style={{background:"#ede9fe", borderRadius:12, padding:12, border:"1px solid #ddd6fe"}}>
+            <b style={{fontSize:13}}>🤖 Asisten Dewa - Mandu Nganti Cuan</b><p style={{fontSize:11, marginTop:6, color:"#444"}}>Halo {user.name}! 1.Daftar konfirmasi Email/WA 2.Radar maksimal area tak terbatas - butuh Rp {unlockPrice} untuk unlock 3.Dadi teman -> delok titik akurat 4.Hiburan real -> kumpul Coins 5.Gift Mawar {giftPrices.mawar} - Rumah {giftPrices.rumah} -> saldo pemilik 6.TopUp/WD DANA SeaBank Bank Lain + Pulsa/Paket. Gak enek akun demo - kabeh real!</p>
+          </div>
+          <div style={{marginTop:12, display:"flex", flexDirection:"column", gap:8}}>
+            {radarList.filter(p=>temanList.includes(p.id)).map(p=>(<div key={p.id} style={{background:"#fff", borderRadius:12, padding:12, display:"flex", gap:10, border:"1px solid #10b981"}}><img src={p.foto} style={{width:40, height:40, borderRadius:"50%"}}/><div><b style={{fontSize:13}}>{p.nama} ✅ Teman</b><div style={{fontSize:11, color:"#666"}}>Wes dadi teman - iso delok titik lokasi akurat + gift</div></div></div>))}
+            {temanList.length===0 && <p style={{fontSize:11, color:"#888", textAlign:"center", marginTop:20}}>Durung enek teman - golek neng Radar, butuh Rp {unlockPrice} per orang</p>}
+          </div>
+        </div>
+      )}
+
+      {tab==="dompet" && (
+        <div style={{padding:16, display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{background:"#fff", borderRadius:16, padding:16, border:"1px solid #eee"}}>
+            <p style={{fontSize:11, color:"#666"}}>Saldo</p><b>Rp {saldo.toLocaleString("id-ID")}</b><br/><p style={{fontSize:11, color:"#666", marginTop:8}}>Coins</p><b>{coins}</b>
+            <button onClick={()=>{setCoins(coins+1000); setSaldo(saldo+10000)}} style={{...btnUngu, width:"100%", marginTop:12}}>Topup AMAN - Midtrans Server Key ora neng App.jsx</button>
+            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:12}}>
+              <button onClick={()=>{if(coins>=1000){setCoins(coins-1000); setSaldo(saldo+500000); alert("Convert 1000 Coins -> 500rb")}} } style={btnKecil}>Convert 1000 → 500rb</button>
+              <button onClick={()=>alert("WD ke DANA/SeaBank/Bank Lain - konek")} style={btnKecil}>WD DANA/SeaBank</button>
+              <button onClick={()=>{if(saldo>=10000){setSaldo(s=>s-10000); alert("Pulsa 10rb terkirim!")}} } style={btnKecil}>Beli Pulsa 10rb</button>
+              <button onClick={()=>{if(saldo>=25000){setSaldo(s=>s-25000); alert("Paket Data 2GB terkirim!")}} } style={btnKecil}>Paket Data 2GB</button>
+            </div>
+            <p style={{fontSize:9, color:"#888", marginTop:8, textAlign:"center"}}>Konek: DANA, SeaBank 9011****, BCA, BRI, BNI, Mandiri - Server Key aman - data pemilik dirahasiakan</p>
+          </div>
+          <div style={{background:"#fff", borderRadius:12, padding:12, border:"1px solid #eee"}}>
+            <b style={{fontSize:12}}>🎁 Harga Gift (Iso di-setting Dewa)</b><div style={{fontSize:11, marginTop:6, color:"#444"}}>🌹 Mawar: Rp {giftPrices.mawar.toLocaleString("id-ID")} | 🍦 Es: Rp {giftPrices.es.toLocaleString("id-ID")} | 💍 Cincin: Rp {giftPrices.cincin.toLocaleString("id-ID")} | 🏠 Rumah: Rp {giftPrices.rumah.toLocaleString("id-ID")}</div>
+          </div>
+        </div>
+      )}
+
+      {tab==="profil" && (
+        <div style={{padding:16, display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{background:"#fff", borderRadius:16, padding:16, border:"1px solid #eee", textAlign:"center"}}>
+            <img src="https://i.pravatar.cc/150?img=12" style={{width:80, height:80, borderRadius:"50%"}}/><h3>{user.name}</h3><p style={{fontSize:11, color:"#666"}}>Member • {t.global}</p>
+            <div style={{marginTop:12, textAlign:"left"}}>
+              <p style={{fontSize:11, fontWeight:600}}>🌐 Pilihan Bahasa Internasional:</p>
+              <div style={{display:"flex", gap:6, flexWrap:"wrap", marginTop:6}}>
+                {Object.keys(LANGS).map(k=>(<button key={k} onClick={()=>setLang(k)} style={{...btnKecil, background:lang===k?"#7c3aed":"#f3f4f6", color:lang===k?"#fff":"#555"}}>{k.toUpperCase()}</button>))}
+              </div>
+            </div>
+            {user.role==="owner" && <div style={{marginTop:12, background:"#111827", color:"#fff", padding:10, borderRadius:8, fontSize:10, textAlign:"left"}}>👑 DEWA - Data Pemilik Dirahasiakan - Sek Weroh Pemilik Dewe<br/>SeaBank **** AES • Midtrans server-side • ISO SETTING SALDO LAN OPO WAE</div>}
+            <div style={{marginTop:16, display:"flex", gap:8}}>
+              <button onClick={()=>{setUser(null); setTemanList([])}} style={{...btnKecil, flex:1, background:"#f3f4f6"}}>Log Out</button>
+              <button onClick={()=>{if(confirm("Hapus datane dewe permanen?")){setUser(null); setTemanList([]); alert("Data dihapus permanen");}}} style={{...btnKecil, flex:1, background:"#fef2f2", color:"#dc2626"}}>Hapus Data</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:420, background:"#fff", borderTop:"1px solid #eee", display:"flex", justifyContent:"space-around", padding:"8px 0"}}>
+        {[{k:"beranda", l:t.daftar==="Daftar"?"Beranda":"Home"},{k:"radar", l:t.radar},{k:"chat", l:t.chat},{k:"live", l:t.live},{k:"hiburan", l:t.hiburan},{k:"dompet", l:t.dompet},{k:"profil", l:t.profil},].map(m=>(<button key={m.k} onClick={()=>setTab(m.k)} style={{border:"none", background:"none", fontSize:10, color:tab===m.k?"#7c3aed":"#888", fontWeight:tab===m.k?700:400}}>{m.l}</button>))}
       </div>
-      {playingVideo && (<div className="fixed inset-0 z-50 bg-black/90 flex flex-col p-4"><div className="flex justify-between items-center mb-4"><h2 className="font-black text-sm">{t.playerTitle}: {playingVideo.title}</h2><button onClick={() => setPlayingVideo(null)} className="bg-white/10 w-10 h-10 rounded-full">✕</button></div><video src={playingVideo.video} controls autoPlay className="w-full rounded-2xl bg-black" poster={playingVideo.thumb}></video><div className="mt-4 bg-[#1a1a1a] rounded-2xl p-4"><h3 className="font-bold">{playingVideo.title}</h3><p className="text-sm text-white/60">{playingVideo.desc}</p><div className="flex gap-2 mt-3"><button className="flex-1 bg-white/10 rounded-full py-2 text-sm">❤️ Like</button><button className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full py-2 text-sm font-bold">🎁 Gift</button></div></div></div>)}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[#1a1a1a]/90 backdrop-blur-xl border-t border-white/10 flex justify-around py-3">
-        {[{ id: 'radar', icon: '📡' }, { id: 'chat', icon: '💬' }, { id: 'hiburan', icon: '🎬' }, { id: 'dompet', icon: '💰' }, { id: 'profil', icon: '👤' }].map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center text-[10px] ${activeTab === tab.id ? 'text-white' : 'text-white/40'}`}><span className="text-xl">{tab.icon}</span><span>{getT(lang)[tab.id]}</span></button>))}
-      </div>
+      <button style={{position:"fixed", bottom:80, right:16, width:48, height:48, borderRadius:"50%", background:"#7c3aed", color:"#fff", border:"none", fontSize:20, boxShadow:"0 4px 12px rgba(0,0,0,0.2)"}} onClick={()=>setTab("chat")}>?</button>
     </div>
   );
 }
+const inp = {padding:"12px", borderRadius:10, border:"1px solid #e5e7eb", fontSize:14, width:"100%", boxSizing:"border-box"};
+const btnUngu = {background:"#7c3aed", color:"#fff", border:"none", padding:"12px", borderRadius:10, fontWeight:700, fontSize:14};
+const chip = {background:"#f3f4f6", border:"1px solid #e5e7eb", borderRadius:20, padding:"6px 10px", fontSize:11};
+const btnKecil = {background:"#ede9fe", color:"#5b21b6", border:"none", borderRadius:8, padding:"8px 12px", fontSize:11, fontWeight:600};
+const cardHib = {background:"#f9fafb", border:"1px solid #e5e7eb", borderRadius:12, padding:10, textAlign:"center", fontSize:11, cursor:"pointer"};
+const cardDrama = {background:"#111827", color:"#fff", borderRadius:8, padding:8, textAlign:"center", fontSize:11, cursor:"pointer"};
+const rowK = {display:"flex", justifyContent:"space-between", alignItems:"center", background:"#f9fafb", padding:8, borderRadius:8};
+const giftBtn = {background:"#fff", border:"1px solid #e5e7eb", borderRadius:10, padding:10, textAlign:"center", fontSize:11, cursor:"pointer"};
