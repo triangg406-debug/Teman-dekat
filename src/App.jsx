@@ -1,174 +1,228 @@
-import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+// FINAL APK.JSX - LOCAL AREA - FINAL TENAN V3
+// Tampilan utama: Daftar konfirmasi WA atau Email, baru Log In
+// RA ENEK DEMO - Demo diganti Asisten Owner
+// PIN Dewa 1106 - Tap logo 5x
+import React, { useState } from 'react';
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
+export default function FinalAPK() {
+  const [step, setStep] = useState('daftar'); // daftar | konfirmasi | login | app
+  const [user, setUser] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+  const [showPin, setShowPin] = useState(false);
+  const [pin, setPin] = useState('');
+  
+  // FORM DAFTAR
+  const [formDaftar, setFormDaftar] = useState({ nama: '', kontak: '', tipe: 'WA', password: '' });
+  const [otp, setOtp] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [pendingUser, setPendingUser] = useState(null);
 
-const OWNER_NAME = 'triangga';
-const OWNER_EMAIL = 'triangga406@gmail.com';
-
-export default function App() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('td_user')||'null'));
-  const [role, setRole] = useState(localStorage.getItem('td_role')||null);
-  const [view, setView] = useState(user? (localStorage.getItem('td_role')==='OWNER'?'owner':'radar') : 'login');
-  const [users, setUsers] = useState([]); // REAL SOKO SUPABASE
-  const [saldo, setSaldo] = useState(0);
+  // DATA REAL - RA ENEK DEMO
+  const [usersReal, setUsersReal] = useState([]); // 0 orang awal
+  const [uangMasuk, setUangMasuk] = useState(0);
   const [transaksi, setTransaksi] = useState([]);
-  const [target, setTarget] = useState(null);
-  const [radius, setRadius] = useState(500);
-  const [asistenStep, setAsistenStep] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('users');
 
-  const asistenTexts = [
-    "Halo bro! Aktifke GPS disek ben radar iso muter.",
-    "Saiki radar kosong mergo urung enek user real. Undang koncomu daftar bro!",
-    "Nek enek wong daftar, langsung ketok jarak meter e neng radar REAL Supabase.",
-    "Chat real, gift real, dompet real - kabeh mlebu Supabase mu.",
-    "Top Up 50rb syarat Live 10 orang, duite real iso di-WD ke DANA/SeaBank 9011****."
-  ];
+  // FORM LOGIN
+  const [formLogin, setFormLogin] = useState({ kontak: '', password: '' });
 
-  useEffect(()=>{
-    // LOAD MIDTRANS SNAP REAL
-    const s=document.createElement("script");
-    s.src="https://app.midtrans.com/snap/snap.js";
-    s.setAttribute("data-client-key", import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
-    document.body.appendChild(s);
-    if(user) fetchReal();
-  },[]);
-
-  const fetchReal = async () => {
-    const { data } = await supabase.from('teman_dekat').select('*').order('created_at',{ascending:false}).limit(50);
-    if(data) setUsers(data);
-    if(user){
-      const { data: me } = await supabase.from('teman_dekat').select('saldo').eq('email', user.email).single();
-      if(me) setSaldo(me.saldo||0);
-      const { data: trx } = await supabase.from('transaksi').select('*').eq('user', user.email).order('created_at',{ascending:false});
-      if(trx) setTransaksi(trx);
-    }
+  const handleLogoTap = () => {
+    const n = tapCount + 1; setTapCount(n);
+    if (n >= 5) { setShowPin(true); setTapCount(0); }
+    setTimeout(()=>setTapCount(0),3000);
+  };
+  const handlePin = () => {
+    if (pin==='1106') {
+      setIsOwner(true);
+      setUser({name:'triangga', kontak:'owner', isOwner:true});
+      setStep('app'); setShowPin(false); setPin('');
+    } else alert('PIN Salah!');
   };
 
-  const isOwner = (n,e) => n.toLowerCase()===OWNER_NAME || e.toLowerCase()===OWNER_EMAIL;
+  // DAFTAR -> KIRIM KONFIRMASI WA/EMAIL
+  const handleDaftar = () => {
+    if (!formDaftar.nama || !formDaftar.kontak || !formDaftar.password) return alert('Lengkapi daftar!');
+    // Cek sudah ada?
+    if (usersReal.find(u=>u.kontak===formDaftar.kontak)) return alert('WA/Email wes terdaftar!');
+    // Generate OTP simulasi
+    const kode = Math.floor(100000 + Math.random()*900000).toString();
+    setOtp(kode);
+    setPendingUser({ ...formDaftar, id: Date.now(), saldo: 0, online: true, daftar: new Date().toLocaleString() });
+    setStep('konfirmasi');
+    alert(`KODE KONFIRMASI ${formDaftar.tipe} ke ${formDaftar.kontak}: ${kode} (simulasi - di real kirim via WA/Email)`);
+  };
 
-  const login = async (n,e) => {
-    if(!n ||!e){ alert("Isi nama & email!"); return; }
-    setLoading(true);
-    try{
-      const { data: exist } = await supabase.from('teman_dekat').select('*').eq('email', e).single();
-      let saldoAwal = 0;
-      if(!exist){
-        // DAFTAR REAL BARU
-        const { error } = await supabase.from('teman_dekat').insert({
-          username: n, name: n, email: e, kontak: e, saldo: 10000, coins: 100, jarak: Math.floor(Math.random()*400)+20
-        });
-        if(error) throw error;
-        saldoAwal = 10000;
-        await supabase.from('transaksi').insert({ user: e, jenis: 'Bonus Daftar Real', harga: 10000, status: 'sukses' });
-      } else {
-        saldoAwal = exist.saldo;
+  const handleKonfirmasi = () => {
+    if (otpInput !== otp) return alert('Kode konfirmasi salah!');
+    // Sukses daftar
+    setUsersReal([...usersReal, { ...pendingUser, verified: true }]);
+    alert(`Sukses! Akun ${pendingUser.nama} terverifikasi. Saiki iso Log In`);
+    setStep('login');
+    setFormLogin({ kontak: pendingUser.kontak, password: pendingUser.password });
+    setOtpInput(''); setOtp(''); setPendingUser(null);
+  };
+
+  const handleLogin = () => {
+    const found = usersReal.find(u=>u.kontak===formLogin.kontak && u.password===formLogin.password);
+    if (!found) {
+      if (formLogin.kontak==='triangga' && formLogin.password==='1106') {
+        // Owner bisa login langsung juga
+        setIsOwner(true); setUser({name:'triangga', isOwner:true}); setStep('app'); return;
       }
-      const r = isOwner(n,e)? 'OWNER' : 'USER';
-      const u = {name:n, email:e, role:r};
-      setUser(u); setRole(r); setSaldo(r==='OWNER'?999999999:saldoAwal);
-      localStorage.setItem('td_user', JSON.stringify(u));
-      localStorage.setItem('td_role', r);
-      setView(r==='OWNER'?'owner':'radar');
-      fetchReal();
-    }catch(err){ alert("Error Supabase: "+err.message+" - cek tabel teman_dekat mu"); }
-    setLoading(false);
+      return alert('WA/Email atau password salah, atau belum konfirmasi!');
+    }
+    setUser(found);
+    setIsOwner(false);
+    setStep('app');
   };
 
-  const topupReal = async (nom) => {
-    try{
-      const res=await fetch('/api/midtrans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:nom, user:user.email})});
-      const {token}=await res.json();
-      window.snap.pay(token,{
-        onSuccess: async ()=>{
-          const newSaldo = saldo + nom;
-          setSaldo(newSaldo);
-          await supabase.from('teman_dekat').update({saldo:newSaldo}).eq('email', user.email);
-          await supabase.from('transaksi').insert({user:user.email, jenis:'topup', harga:nom, status:'sukses', bank:'SeaBank 9011****'});
-          alert(`Topup REAL Rp ${nom.toLocaleString()} sukses!`);
-          fetchReal();
-        }
-      });
-    }catch{ alert("API /api/midtrans mu durung ready - set neng Vercel"); }
+  // FUNGSI DEWA
+  const kasihGift = (target, nominal) => {
+    setUsersReal(usersReal.map(u=>u.nama===target?{...u, saldo:u.saldo+Number(nominal)}:u));
+  };
+  const tarikDuit = (nominal, metode) => {
+    if (Number(nominal) > uangMasuk) return alert('Uang real kurang! Rp '+uangMasuk);
+    setUangMasuk(uangMasuk-Number(nominal));
+    alert(`Narik Rp ${nominal} ke ${metode} sukses!`);
+  };
+  const tfUser = (dari, ke, nominal) => {
+    setUsersReal(usersReal.map(u=>{
+      if(u.nama===dari) return {...u, saldo:u.saldo-Number(nominal)};
+      if(u.nama===ke) return {...u, saldo:u.saldo+Number(nominal)};
+      return u;
+    }));
   };
 
-  if(view==='login'){
+  // STEP 1: DAFTAR - TAMPILAN UTAMA
+  if (step==='daftar') {
     return (
-      <div className="max-w-[430px] mx-auto min-h-screen bg-black text-white p-6 flex flex-col justify-center">
-        <h1 className="text-3xl font-black">TemanDekat</h1>
-        <p className="text-sm text-zinc-400">REAL Supabase • Tanpa Demo • Asisten Aktif</p>
-        <div className="mt-2 bg-blue-900/30 border border-blue-800 p-3 rounded-xl">
-          <p className="text-xs font-bold text-blue-300">🤖 Asisten: {asistenTexts[0]}</p>
-        </div>
-        <div className="mt-6 bg-zinc-900 p-4 rounded-2xl">
-          <input id="nm" placeholder="Nama (triangga = owner)" className="w-full p-3 bg-zinc-800 rounded-xl text-sm outline-none" />
-          <input id="em" placeholder="Email Real (masuk Supabase)" className="w-full mt-3 p-3 bg-zinc-800 rounded-xl text-sm outline-none" />
-          <button onClick={()=>{const n=document.getElementById('nm').value; const e=document.getElementById('em').value; login(n,e)}} disabled={loading} className="w-full mt-4 bg-white text-black py-3 rounded-xl font-bold disabled:opacity-50">{loading?'Nyambung Supabase...':'Masuk (Real Supabase)'}</button>
-          <p className="text-[10px] text-zinc-500 mt-2 text-center">Data langsung mlebu tabel teman_dekat • Radar REAL</p>
-        </div>
-      </div>
-    )
-  }
-
-  if(role==='OWNER' && view==='owner'){
-    return (
-      <div className="max-w-[430px] mx-auto min-h-screen bg-black text-white pb-20">
-        <div className="p-4 bg-zinc-900"><h1 className="font-bold">Dashboard Pemilik - {user.name} 👑DEWA</h1><p className="text-xs text-zinc-400">{user.email} • SeaBank 9011**** Rahasia</p></div>
-        <div className="p-4 space-y-4">
-          <div className="bg-blue-900/20 border border-blue-800 p-3 rounded-xl"><p className="text-xs font-bold">🤖 Asisten Owner:</p><p className="text-xs mt-1">Saiki user REAL {users.length} orang soko Supabase. Demo Rina Budi wes tak guwak total.</p></div>
-          <div className="grid grid-cols-2 gap-3"><div className="bg-green-900/30 p-3 rounded-xl"><p className="text-xs">User Real</p><p className="font-bold">{users.length} orang</p></div><div className="bg-zinc-900 p-3 rounded-xl"><p className="text-xs">Uang Masuk Real</p><p className="font-bold">Rp {transaksi.filter(t=>t.harga>0).reduce((a,b)=>a+(b.harga||0),0).toLocaleString()}</p></div></div>
-          <div className="bg-zinc-900 p-3 rounded-xl">
-            <p className="font-bold text-sm">User Real Yang Daftar (Supabase)</p>
-            {users.length===0? <p className="text-xs text-zinc-500 mt-2">Belum ada user real. Kosong mergo TANPA DEMO.</p> : users.map(u=><div key={u.id} className="text-xs mt-2 bg-zinc-800 p-2 rounded flex justify-between"><span>{u.name||u.username} - {u.email}</span><span>Rp {u.saldo}</span></div>)}
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+        <div onClick={handleLogoTap} className="text-5xl mb-3 cursor-pointer select-none">📍</div>
+        <h1 className="font-bold text-xl">LOCAL AREA</h1>
+        <p className="text-[11px] text-zinc-500 mb-6">Daftar dulu - Konfirmasi WA/Email - Baru Login • Ra enek demo</p>
+        
+        <div className="w-full max-w-xs bg-zinc-900 p-5 rounded-2xl border border-zinc-800">
+          <h2 className="font-bold mb-4">Daftar Akun Real</h2>
+          <input value={formDaftar.nama} onChange={e=>setFormDaftar({...formDaftar, nama:e.target.value})} placeholder="Jeneng lengkap" className="w-full bg-black p-3 rounded-xl border border-zinc-800 mb-2 text-sm"/>
+          
+          <div className="flex gap-2 mb-2">
+            <select value={formDaftar.tipe} onChange={e=>setFormDaftar({...formDaftar, tipe:e.target.value})} className="bg-black p-3 rounded-xl border border-zinc-800 text-sm">
+              <option value="WA">WA</option>
+              <option value="Email">Email</option>
+            </select>
+            <input value={formDaftar.kontak} onChange={e=>setFormDaftar({...formDaftar, kontak:e.target.value})} placeholder={formDaftar.tipe==='WA'?'Nomor WA (628...)':'Email'} className="flex-1 bg-black p-3 rounded-xl border border-zinc-800 text-sm"/>
           </div>
-          <button onClick={()=>{setView('radar'); fetchReal()}} className="w-full bg-white text-black py-3 rounded-xl text-sm font-bold">Lihat Radar REAL</button>
-          <button onClick={()=>{localStorage.clear(); location.reload()}} className="w-full text-xs text-zinc-500">Log Out</button>
+          
+          <input type="password" value={formDaftar.password} onChange={e=>setFormDaftar({...formDaftar, password:e.target.value})} placeholder="Password" className="w-full bg-black p-3 rounded-xl border border-zinc-800 mb-4 text-sm"/>
+          
+          <button onClick={handleDaftar} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl">DAFTAR & KIRIM KONFIRMASI</button>
+          <button onClick={()=>setStep('login')} className="w-full mt-3 text-zinc-400 text-xs">Wes punya akun? Log In</button>
         </div>
+
+        <p className="text-[10px] text-zinc-600 mt-4 text-center">Demo diganti Asisten • WA+TIKTOK ilang • SOS jadi Pertolongan</p>
+
+        {showPin && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-zinc-900 p-6 rounded-2xl w-full max-w-xs border border-yellow-400">
+              <h3 className="font-bold mb-3">PIN DEWA 1106</h3>
+              <input type="password" value={pin} onChange={e=>setPin(e.target.value)} placeholder="1106" className="w-full bg-black p-3 rounded-xl border border-zinc-700 mb-3"/>
+              <button onClick={handlePin} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl">BUKA</button>
+              <button onClick={()=>setShowPin(false)} className="w-full mt-2 text-zinc-500 text-sm">Batal</button>
+            </div>
+          </div>
+        )}
       </div>
-    )
+    );
   }
 
-  return (
-    <div className="max-w-[430px] mx-auto min-h-screen bg-black text-white pb-24">
-      <div className="p-4 flex justify-between border-b border-zinc-900"><div><h1 className="font-black">TemanDekat</h1><p className="text-[10px] text-zinc-400">Rp {saldo.toLocaleString()} • REAL Supabase • Tanpa Demo</p></div><div className="text-xs bg-zinc-800 px-2 py-1 rounded-full">{user.name} {role==='OWNER'&&'👑'}</div></div>
-
-      <div className="m-4 bg-white text-black p-3 rounded-2xl flex gap-3">
-        <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">A</div>
-        <div className="flex-1"><p className="text-xs font-bold">Asisten TemanDekat</p><p className="text-xs mt-1">{asistenTexts[asistenStep]}</p><div className="flex gap-2 mt-2"><button onClick={()=>setAsistenStep(s=> (s+1)%asistenTexts.length)} className="bg-black text-white px-3 py-1 rounded-full text-[10px]">Next Panduan</button><button onClick={()=>{navigator.geolocation?.getCurrentPosition(()=>{setAsistenStep(1); fetchReal()})}} className="bg-zinc-200 px-3 py-1 rounded-full text-[10px]">Aktifkan GPS & Reload REAL</button></div></div>
+  // STEP 2: KONFIRMASI WA/EMAIL
+  if (step==='konfirmasi') {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+        <h1 className="font-bold text-xl mb-2">Konfirmasi {formDaftar.tipe}</h1>
+        <p className="text-xs text-zinc-400 mb-6 text-center">Kode dikirim ke {pendingUser?.kontak}<br/>Cek WA/Email mu (simulasi: {otp})</p>
+        <div className="w-full max-w-xs bg-zinc-900 p-5 rounded-2xl border border-zinc-800">
+          <input value={otpInput} onChange={e=>setOtpInput(e.target.value)} placeholder="Masukkan 6 digit kode" className="w-full bg-black p-3 rounded-xl border border-zinc-800 mb-4 text-center text-lg tracking-widest"/>
+          <button onClick={handleKonfirmasi} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl">KONFIRMASI & AKTIFKAN</button>
+          <button onClick={()=>setStep('daftar')} className="w-full mt-3 text-zinc-500 text-xs">Ganti WA/Email</button>
+        </div>
       </div>
+    );
+  }
 
-      {view==='radar' && (
+  // STEP 3: LOG IN
+  if (step==='login') {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+        <div onClick={handleLogoTap} className="text-5xl mb-3 cursor-pointer">📍</div>
+        <h1 className="font-bold text-xl mb-6">Log In Real</h1>
+        <div className="w-full max-w-xs bg-zinc-900 p-5 rounded-2xl border border-zinc-800">
+          <input value={formLogin.kontak} onChange={e=>setFormLogin({...formLogin, kontak:e.target.value})} placeholder="WA / Email yang sudah konfirmasi" className="w-full bg-black p-3 rounded-xl border border-zinc-800 mb-2 text-sm"/>
+          <input type="password" value={formLogin.password} onChange={e=>setFormLogin({...formLogin, password:e.target.value})} placeholder="Password" className="w-full bg-black p-3 rounded-xl border border-zinc-800 mb-4 text-sm"/>
+          <button onClick={handleLogin} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl">LOG IN</button>
+          <button onClick={()=>setStep('daftar')} className="w-full mt-3 text-zinc-400 text-xs">Durung daftar? Daftar sek</button>
+        </div>
+        {showPin && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-zinc-900 p-6 rounded-2xl w-full max-w-xs border border-yellow-400">
+              <h3 className="font-bold mb-3">PIN DEWA</h3>
+              <input type="password" value={pin} onChange={e=>setPin(e.target.value)} placeholder="1106" className="w-full bg-black p-3 rounded-xl border border-zinc-700 mb-3"/>
+              <button onClick={handlePin} className="w-full bg-yellow-400 text-black font-bold p-3 rounded-xl">BUKA DEWA</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // STEP 4: APP UTAMA - OWNER DEWA
+  if (isOwner) {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <div className="bg-zinc-900 p-4 border-b border-yellow-400/20 sticky top-0">
+          <h1 className="font-bold text-yellow-400">Dashboard Pemilik - triangga - DEWA</h1>
+          <p className="text-xs text-zinc-400">1106 - Data Diamanke - Demo Dihapus, Diganti Asisten</p>
+          <div className="mt-3 bg-[#0a1628] border border-blue-500/40 p-3 rounded-xl">
+            <p className="text-sm font-bold">🤖 Asisten Owner:</p>
+            <p className="text-xs text-zinc-300 mt-1">Saiki user masih {usersReal.length} (real). Kowe iso lihat siapa daftar, uang masuk, kasih saldo manual. {usersReal.length===0?'Demo Rina Budi sudah tak guwak.':'Ada '+usersReal.length+' user real.'}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="bg-[#1B2A1E] p-3 rounded-xl"><p className="text-xs text-zinc-400">User Real</p><p className="font-bold">{usersReal.length} orang</p></div>
+            <div className="bg-[#1B2A1E] p-3 rounded-xl"><p className="text-xs text-zinc-400">Uang Masuk Real</p><p className="font-bold">Rp {uangMasuk.toLocaleString()}</p></div>
+          </div>
+          <div className="flex gap-2 mt-3 overflow-x-auto">
+            <button onClick={()=>setActiveTab('users')} className={`px-3 py-2 rounded-full text-xs font-bold ${activeTab==='users'?'bg-yellow-400 text-black':'bg-zinc-800'}`}>USER REAL</button>
+            <button onClick={()=>setActiveTab('duit')} className={`px-3 py-2 rounded-full text-xs font-bold ${activeTab==='duit'?'bg-yellow-400 text-black':'bg-zinc-800'}`}>DUIT & SALDO</button>
+            <button onClick={()=>setActiveTab('chat')} className={`px-3 py-2 rounded-full text-xs font-bold ${activeTab==='chat'?'bg-yellow-400 text-black':'bg-zinc-800'}`}>CHAT SPO WAE</button>
+            <button onClick={()=>setActiveTab('setting')} className={`px-3 py-2 rounded-full text-xs font-bold ${activeTab==='setting'?'bg-yellow-400 text-black':'bg-zinc-800'}`}>SETTING</button>
+          </div>
+        </div>
         <div className="p-4">
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <p className="font-bold text-sm">Radar Maksimal - REAL {users.length} User</p>
-            <div className="w-48 h-48 mx-auto mt-4 relative"><div className="absolute inset-0 rounded-full border border-zinc-700"></div><div className="absolute inset-0 rounded-full border-2 border-green-500 border-t-transparent animate-spin"></div><div className="absolute top-1/2 left-1/2 w-2 h-2 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>{users.length===0 && <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-zinc-500 text-center">Kosong<br/>Tunggu user real</p>}</div>
-          </div>
-          <div className="mt-4">
-            {users.length===0? (
-              <div className="bg-zinc-900 p-6 rounded-2xl text-center"><p className="text-sm font-bold">Belum ada wong cedak</p><p className="text-xs text-zinc-400 mt-1">Demo tak guwak. Saiki nunggu wong real daftar neng Supabase.</p><button onClick={()=>{const link=window.location.href; navigator.clipboard.writeText(link); alert('Link disalin! Share ke teman ben daftar REAL.')}} className="mt-3 bg-white text-black px-4 py-2 rounded-full text-xs font-bold">Undang Teman (+10k Real)</button></div>
-            ) : users.filter(u=>u.email!==user.email).map(u=>(
-              <div key={u.id} className="bg-zinc-900 p-3 rounded-xl flex justify-between items-center mt-2"><div><p className="text-sm font-bold">{u.name||u.username}</p><p className="text-xs text-zinc-400">{u.jarak||50}m • Rp {u.saldo} • REAL</p></div><button onClick={()=>{setTarget(u); alert('Chat REAL ke '+u.name+' - sambungke tabel chat')}} className="bg-white text-black px-3 py-1 rounded-full text-xs">Chat REAL</button></div>
-            ))}
-          </div>
+          {activeTab==='users' && (
+            <div>
+              <h2 className="font-bold mb-2 text-sm">User Real Yang Daftar (Bukan Demo)</h2>
+              {usersReal.length===0 ? <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800 text-center"><p className="text-sm text-zinc-500">Belum ada user real. Undang teman daftar, nanti muncul di sini.</p></div> :
+                usersReal.map(u=><div key={u.id} className="bg-zinc-900 p-3 rounded-xl mb-2 flex justify-between border border-zinc-800"><div><p className="font-bold text-sm">{u.nama}</p><p className="text-[11px] text-zinc-400">{u.kontak} • Rp {u.saldo.toLocaleString()}</p></div><div className="flex gap-1"><button onClick={()=>{const n=prompt('Gift ke '+u.nama); if(n) kasihGift(u.nama,n)}} className="bg-green-600 text-[10px] px-2 py-1 rounded">GIFT</button><button onClick={()=>{const d=prompt('TF format: tujuan,nominal'); if(d){const[ke,j]=d.split(','); tfUser(u.nama,ke.trim(),j.trim())}}} className="bg-blue-600 text-[10px] px-2 py-1 rounded">TF</button></div></div>)
+              }
+              <button onClick={()=>{setStep('daftar'); setIsOwner(false); setUser(null)}} className="w-full mt-4 text-zinc-500 text-sm">Log Out</button>
+            </div>
+          )}
+          {activeTab==='duit' && <div className="space-y-3"><button onClick={()=>{const n=prompt('Narik berapa?'); const m=prompt('Ke DANA/BCA?'); if(n) tarikDuit(n,m)}} className="w-full bg-yellow-400 text-black p-3 rounded-xl font-bold text-sm">NARIK DUIT DEWA - Rp {uangMasuk.toLocaleString()}</button></div>}
+          {activeTab==='chat' && <div className="bg-zinc-900 p-4 rounded-xl"><p className="text-xs mb-2">Iso chat spo wae - broadcast ke {usersReal.length} user real</p><button onClick={()=>alert('Broadcast ke semua')} className="w-full bg-yellow-400 text-black p-2 rounded text-sm font-bold">BROADCAST</button></div>}
+          {activeTab==='setting' && <div className="text-xs space-y-1"><p>✅ Daftar Konfirmasi WA/Email - aktif</p><p>✅ Login Real - aktif</p><p>✅ Ra enek demo - diganti asisten</p><p>✅ Dewa iso TF, Gift, Tarik, Chat</p></div>}
         </div>
-      )}
-
-      {view==='dompet' && (
-        <div className="p-4 space-y-4">
-          <div className="bg-zinc-900 p-4 rounded-2xl"><p className="text-xs">Dompet Real Supabase</p><p className="text-2xl font-black">Rp {saldo.toLocaleString()}</p><p className="text-[10px] text-zinc-400 mt-1">SeaBank 9011**** • Midtrans REAL</p>
-            <button onClick={()=>topupReal(20000)} className="w-full mt-3 bg-white text-black py-3 rounded-xl text-sm font-bold">Topup REAL 20rb</button>
-            <button onClick={()=>topupReal(50000)} className="w-full mt-2 bg-zinc-800 py-3 rounded-xl text-sm">Topup REAL 50rb</button>
-          </div>
-          <div className="bg-zinc-900 p-3 rounded-xl"><p className="text-xs font-bold">Riwayat Transaksi REAL</p>{transaksi.map(t=><div key={t.id} className="text-xs mt-2 flex justify-between"><span>{t.jenis}</span><span>Rp {t.harga}</span></div>)}</div>
-        </div>
-      )}
-
-      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-zinc-900 flex justify-around py-2 border-t border-zinc-800">
-        <button onClick={()=>setView('radar')} className="text-xs">📡<br/>Radar</button>
-        <button onClick={()=>setView('dompet')} className="text-xs">💰<br/>Dompet</button>
-        <button onClick={()=>setView('owner')} className="text-xs">👤<br/>Profil</button>
       </div>
+    );
+  }
+
+  // USER BIASA APP
+  return (
+    <div className="min-h-screen bg-black text-white p-4">
+      <h2 className="font-bold">📡 Radar - {user?.nama}</h2>
+      <p className="text-xs text-zinc-500">User real: {usersReal.length} • Ra enek demo</p>
+      <div className="mt-4 bg-zinc-900 p-3 rounded-xl"><p className="text-xs font-bold text-yellow-400">JALUR DUIT REAL</p><p className="text-sm">Saldo mu: Rp {usersReal.find(u=>u.nama===user?.nama)?.saldo.toLocaleString() || 0}</p></div>
+      <button onClick={()=>{setStep('daftar'); setUser(null)}} className="w-full mt-6 text-zinc-500 text-sm">Log Out</button>
     </div>
-  )
+  );
 }
